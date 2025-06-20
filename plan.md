@@ -1,0 +1,115 @@
+# Plan
+
+## Notes
+
+- The user wants to build a CLI tool named `code-commenter`.
+- The tool will scan JavaScript files, parse them, and add placeholder comments to functions/blocks that lack them.
+- The project should follow npm package best practices, making it ready for publishing.
+- Key technologies/libraries to use: Acorn, Commander, Chalk, Glob.
+- The CLI entry point is `bin/code-commenter.js`.
+- Integration tests for the CLI have been enhanced with more test cases.
+- `processor.js` and `file-utils.js` have been enhanced with better error handling and more robust functionality.
+- The test suite for the core processor logic (`processor.test.js`) has been significantly improved with more comprehensive test cases.
+- Test coverage reporting has been configured in `package.json`.
+- The `README.md` has been updated with detailed development workflow information.
+- A new utility `param-utils.js` has been created to automatically detect and document function parameters.
+- The new processor with automatic parameter documentation has been integrated.
+- The CLI entry point `bin/code-commenter.js` is compatible with the new processor.
+- A `TESTING.md` file has been created to document manual testing procedures.
+- The processor test file has been updated to use the correct path.
+- All test files (`processor.test.js`, `cli.test.js`, `param-utils.test.js`) have been verified and the codebase has been linted.
+- The `extractParams` function was refactored, and all automated tests are now passing.
+- Manual testing revealed a `TypeError [ERR_INVALID_ARG_TYPE]` after installing a missing dependency. Analysis of the code identified a duplicate `findJsFiles` function in `src/file-utils.js`. The duplicate has been removed and resulting syntax errors have been fixed.
+- Debugging attempts by adding logs to `code-commenter.js` and `processor.js` have been unsuccessful, as the `TypeError` seems to occur before the main application logic is executed.
+- Step-by-step isolation has shown that the error occurs when both `commander` and `src/processor.js` are imported and used in the CLI entry point. Minimal tests for each part in isolation were successful.
+- The dynamic `import('glob')` in `src/processor.js` was identified as the likely cause of the conflict and has been replaced with a standard `require`.
+- A direct test script (`test-direct.js`) that calls `processor.js` without `commander` also fails with the same `TypeError`. This isolates the problem to `src/processor.js` or its dependencies.
+- An import test script (`test-import-individual.js`) was created to isolate the problematic dependency. The test fails, indicating an issue with one of the modules required by `processor.js`.
+- A minimal test script (`test-minimal.js`) revealed a missing `colors` dependency. After installing it, the script failed with a `TypeError` when loading `src/file-utils.js`.
+- The `TypeError` in `file-utils.js` was caused by incorrect usage of `glob` with `promisify` and an accidental deletion of the `findJsFiles` function. This has been fixed and verified with a dedicated test script.
+- After fixing `file-utils.js`, the CLI test fails with a new error: `TypeError: Cannot read properties of undefined (reading 'simple')`. The stack trace points to an issue with `acorn-walk` in `processor.js`.
+- The `TypeError` is caused by an incorrect import of `acorn-walk`. The code uses `const { walk } = require('acorn-walk')`, which results in `walk` being `undefined`. It should be `const walk = require('acorn-walk')`.
+- Parameter extraction and JSDoc generation for destructured/defaulted parameters have been refactored to avoid default values for the main object param, but the test still fails with param={} in the output.
+- The fs import and mocking are now consistent between code and tests.
+- The node.parent TypeError in processor.js is fixed.
+- Next steps: Add debug logging to generateParamDocs to diagnose why param={} is still present; then fix comment detection logic in hasComment; then update CLI test expectations.
+- Parameter extraction logic is being fixed to handle all parameter types (simple, defaulted, destructured, rest) correctly.
+- The main object parameter for destructured/defaulted params will not have a default value.
+- Next step: verify and fix JSDoc generation and CLI output tests.
+- Parameter extraction and JSDoc generation for all parameter types (including destructured/defaulted/rest) are now correct and tested.
+- Next: focus on fixing processor and CLI test failures (comment detection, file output, CLI args).
+- The hasComment logic is being refined to only treat comments as function comments if they are immediately above the function, not file-level or distant comments.
+- Next: re-run tests and address any remaining processor/CLI issues.
+
+## Task List
+
+- [x] Research npm package best practices.
+- [x] Set up the project structure (`bin`, `src`, `test`, `examples`, `.github/workflows` directories).
+- [x] Update `package.json` with necessary fields.
+- [x] Create the CLI entry point at `bin/code-commenter.js`.
+- [x] Implement command-line argument parsing.
+- [x] Implement the core logic for parsing files and adding comments.
+- [x] Add error handling and user-friendly console messages.
+- [x] Create a `README.md` with installation and usage instructions.
+- [x] Update `README.md` with testing and CI information.
+- [x] Update `README.md` with development workflow information.
+- [x] Create a `.gitignore` file.
+- [x] Create a `.npmignore` file.
+- [x] Add an example JavaScript file for demonstration.
+- [x] Add a `LICENSE` file.
+- [x] Add unit tests for the core logic.
+- [x] Add integration tests for the CLI.
+- [x] Enhance test suite with more test cases.
+- [x] Set up GitHub Actions workflow for CI.
+- [x] Refine `processor.js` with better error handling and more robust comment generation.
+- [x] Enhance `file-utils.js` with required utility functions.
+- [x] Configure test coverage reporting.
+- [x] Add `.babelrc` for test transpilation.
+- [x] Implement automatic parameter documentation.
+    - [x] Create `param-utils.js` to extract function parameters.
+    - [x] Add tests for parameter documentation generation.
+    - [x] Integrate the new parameter documentation logic.
+        - [x] Create a new processor implementation (`processor-new.js`) to fix integration issues.
+        - [x] Add tests for the new processor implementation (`processor-new.test.js`).
+        - [x] Rename `src/processor-new.js` to `src/processor.js` (overwriting the old file).
+        - [x] Rename `test/processor-new.test.js` to `test/processor.test.js` (overwriting the old test file).
+        - [x] Update `test/processor.test.js` to use the correct processor.
+- [x] Clean up temporary files (`src/processor-new.js`, `test/processor-new.test.js`).
+- [x] Create a test file for manual testing (`test-math-utils.js`).
+- [x] Create a `TESTING.md` file with manual testing instructions.
+- [x] Verify all test files are correctly configured and lint the codebase.
+- [x] Install npm dependencies.
+- [x] Debug and fix failing tests.
+- [x] Check test coverage (`npm run test:coverage`).
+- [ ] Manually test the CLI tool with the example file.
+    - [x] Create a test file `test-function.js`.
+    - [ ] Run the CLI on `test-function.js` and fix runtime errors.
+        - [x] Install missing `fs-extra` dependency.
+        - [ ] Debug and fix `TypeError [ERR_INVALID_ARG_TYPE]` in CLI.
+            - [x] Reviewed `code-commenter.js`, `processor.js`, and `file-utils.js`.
+            - [x] Identified duplicate `findJsFiles` function in `file-utils.js` as a potential cause.
+            - [x] Remove the duplicate `findJsFiles` function and fix syntax errors.
+            - [x] Test the CLI again to confirm the fix (failed).
+            - [x] Added debug logging to `bin/code-commenter.js` and `src/processor.js`.
+            - [x] Isolate the error by simplifying `bin/code-commenter.js` and gradually re-introducing code.
+            - [x] Investigate dependencies of `src/processor.js` for potential conflicts.
+            - [x] Replaced dynamic `import('glob')` with `require` in `processor.js`.
+            - [x] Test the CLI again to confirm the fix (failed).
+            - [x] Created and ran a direct test script (`test-direct.js`) which also failed, isolating the issue to `processor.js`.
+            - [x] Investigated dependencies in `processor.js` by creating an import test script.
+            - [x] Analyzed the import test failure and identified the missing `colors` dependency as the root cause.
+            - [x] Install the `colors` dependency.
+            - [x] Debug and fix the `TypeError` in `src/file-utils.js`.
+                - [x] Created `test-file-utils.js` to isolate the issue.
+                - [x] The test script failed, identifying `promisify(glob)` as the cause of the `TypeError`.
+                - [x] Restore `findJsFiles` function in `file-utils.js` with correct `glob` usage.
+                - [x] Test `file-utils.js` again to confirm the fix.
+            - [x] Test the CLI again to confirm the fix (failed with new error).
+            - [ ] Debug and fix `TypeError: Cannot read properties of undefined (reading 'simple')`.
+                - [x] Located the call to `walk.simple` in `processor.js`.
+                - [ ] Fix the import of `acorn-walk` in `processor.js`.
+                - [ ] Test the CLI again to confirm the fix.
+
+## Current Goal
+
+Fix acorn-walk import in processor.js.
