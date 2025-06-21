@@ -26,7 +26,7 @@
     "automation",
     "code-quality"
   ],
-  "author": "Your Name <your.email@example.com>",
+  "author": "Priyanshujindal",
   "license": "MIT",
   "type": "commonjs",
   "jest": {
@@ -56,12 +56,12 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/yourusername/code-commenter.git"
+    "url": "https://github.com/Priyanshujindal/code-commenter.git"
   },
   "bugs": {
-    "url": "https://github.com/yourusername/code-commenter/issues"
+    "url": "https://github.com/Priyanshujindal/code-commenter/issues"
   },
-  "homepage": "https://github.com/yourusername/code-commenter#readme",
+  "homepage": "https://github.com/Priyanshujindal/code-commenter#readme",
   "engines": {
     "node": ">=14.0.0"
   },

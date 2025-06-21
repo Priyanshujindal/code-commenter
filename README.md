@@ -3,7 +3,7 @@
 [![npm version](https://badge.fury.io/js/code-commenter.svg)](https://badge.fury.io/js/code-commenter)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Build Status](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/Priyanshujindal/code-commenter/actions)
-[![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg?token=YOUR-TOKEN-HERE)](https://codecov.io/gh/Priyanshujindal/code-commenter)
+[![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg)](https://codecov.io/gh/Priyanshujindal/code-commenter)
 
 A CLI tool that scans JavaScript files and suggests simple, beginner-friendly comments for functions and code blocks. It helps improve code documentation by identifying undocumented functions and adding TODO comments where documentation is missing.
 
@@ -193,7 +193,7 @@ This project uses GitHub Actions for CI/CD. The workflow includes:
 
 Code coverage reports are generated during CI and can be viewed on Codecov:
 
-[![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg?token=YOUR-TOKEN-HERE)](https://codecov.io/gh/Priyanshujindal/code-commenter)
+[![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg)](https://codecov.io/gh/Priyanshujindal/code-commenter)
 
 ## Contributing
 
