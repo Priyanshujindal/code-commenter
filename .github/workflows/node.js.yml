@@ -37,7 +37,11 @@ jobs:
         run: npm test
 
       - name: Run coverage
-        run: npm run test:coverage
+        run: |
+          npm run test:coverage
+          npx codecov
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
 
       - name: Verify package can be packed
         run: npm pack --dry-run
