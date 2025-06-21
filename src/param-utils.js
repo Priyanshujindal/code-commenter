@@ -109,6 +109,15 @@ function extractParam(p, isTypeScript, paramIndex) {
             if (paramInfo) {
                 paramInfo.hasDefault = true;
                 paramInfo.defaultValue = generate(p.right, { format: { quotes: 'double' } });
+                if (p.right.type === 'Literal') {
+                    if (typeof p.right.value === 'number') {
+                        paramInfo.type = 'number';
+                    } else if (typeof p.right.value === 'string') {
+                        paramInfo.type = 'string';
+                    } else if (typeof p.right.value === 'boolean') {
+                        paramInfo.type = 'boolean';
+                    }
+                }
             }
             break;
         case "ObjectPattern":

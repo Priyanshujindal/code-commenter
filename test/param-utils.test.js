@@ -50,7 +50,7 @@ describe("Parameter Utilities", () => {
       expect(params).toEqual([
         {
           name: "a",
-          type: "any",
+          type: "number",
           isRest: false,
           hasDefault: true,
           defaultValue: "5",
@@ -59,7 +59,7 @@ describe("Parameter Utilities", () => {
         },
         {
           name: "b",
-          type: "any",
+          type: "string",
           isRest: false,
           hasDefault: true,
           defaultValue: '"test"',
@@ -257,7 +257,13 @@ describe("Parameter Utilities", () => {
     });
 
     it("should handle complex parameter patterns", () => {
-      const code = `function test({\n  a = 1,\n  b = { x: 1, y: 2 },\n  ...rest\n} = {}) {\n  return { a, b, ...rest };\n}`;
+      const code = `function test({
+  a = 1,
+  b = { x: 1, y: 2 },
+  ...rest
+} = {}) {
+  return { a, b, ...rest };
+}`;
 
       const result = generateParamDocs(code);
       console.log("Generated docs:", result);
@@ -285,6 +291,13 @@ function add(a, b) {
 }`;
       const result = generateParamDocs(code);
       expect(result).toContain("@returns");
+    });
+
+    it("should infer types from default values", () => {
+        const code = `function multiply(a = 1, b = "2") {}`;
+        const result = generateParamDocs(code);
+        expect(result).toContain("@param {number} a");
+        expect(result).toContain("@param {string} b");
     });
   });
 
