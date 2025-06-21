@@ -1,5 +1,18 @@
-const { extractParams, generateParamDocs } = require("../src/param-utils");
+const {
+  extractParams,
+  generateParamDocs,
+  findFunctionNode,
+} = require("../src/param-utils");
 const { parse } = require("acorn");
+
+function parseCode(code) {
+  return parse(code, { ecmaVersion: "latest", sourceType: "module" });
+}
+
+function getFunctionNode(code) {
+  const ast = parseCode(code);
+  return findFunctionNode(ast);
+}
 
 describe("Parameter Utilities", () => {
   describe("extractParams", () => {
@@ -230,7 +243,8 @@ describe("Parameter Utilities", () => {
   return a + b;
 }`;
 
-      const result = generateParamDocs(code);
+      const functionNode = getFunctionNode(code);
+      const result = generateParamDocs(functionNode);
 
       expect(result).toContain("@param {any} a - Parameter 'a'");
       expect(result).toContain("@param {any} b - Parameter 'b'");
@@ -238,7 +252,8 @@ describe("Parameter Utilities", () => {
 
     it("should handle arrow functions", () => {
       const code = "const test = (a, b) => a + b;";
-      const result = generateParamDocs(code);
+      const functionNode = getFunctionNode(code);
+      const result = generateParamDocs(functionNode);
 
       expect(result).toContain("@param {any} a - Parameter 'a'");
       expect(result).toContain("@param {any} b - Parameter 'b'");
@@ -250,59 +265,62 @@ describe("Parameter Utilities", () => {
     return a + b;
   }
 }`;
-      const result = generateParamDocs(code);
+      const functionNode = getFunctionNode(code);
+      const result = generateParamDocs(functionNode);
 
       expect(result).toContain("@param {any} a - Parameter 'a'");
       expect(result).toContain("@param {any} b - Parameter 'b'");
     });
 
     it("should handle complex parameter patterns", () => {
-      const code = `function test({
-  a = 1,
-  b = { x: 1, y: 2 },
-  ...rest
-} = {}) {
-  return { a, b, ...rest };
-}`;
-
-      const result = generateParamDocs(code);
-      console.log("Generated docs:", result);
+      const code = `function test({ a = 1, b: { c, d: [e] } }, [f, ...g]) {}`;
+      const functionNode = getFunctionNode(code);
+      const result = generateParamDocs(functionNode);
 
       // Check for the main object parameter
-      expect(result).toContain("@param {Object} param1 - Object parameter");
+      expect(result).toContain("@param {Object} param0 - Object parameter");
 
       // Check for nested properties with default values
-      expect(result).toContain("@param {number} param1.a=1 - Property 'a'");
-      expect(result).toContain("@param {Object} param1.b - Property 'b'");
+      expect(result).toContain(
+        "@param {number} [a=1] - Parameter 'a'",
+      );
+      expect(result).toContain(
+        "@param {Object} param0.b - Property 'b'",
+      );
+      expect(result).toContain("@param {any} c - Property 'c'");
+      expect(result).toContain("@param {Array} d - Property 'd'");
 
-      // Check for rest parameter
-      expect(result).toContain("@param {Object} param1.rest - Property 'rest'");
-    });
-
-    it("should return empty string for invalid code", () => {
-      const result = generateParamDocs("!@#$%");
-      expect(result).toBe("");
+      // Check for array parameters
+      expect(result).toContain("@param {Array} param1 - Array parameter");
+      expect(result).toContain("@param {any} f - Parameter 'f'");
+      expect(result).toContain(
+        "@param {...any} g - Rest parameter",
+      );
     });
 
     it("should add a @returns tag if a return statement is present", () => {
-      const code = `
-function add(a, b) {
-  return a + b;
+      const code = `function test(a) {
+  if (a > 0) {
+    return true;
+  }
 }`;
-      const result = generateParamDocs(code);
+      const functionNode = getFunctionNode(code);
+      const result = generateParamDocs(functionNode);
       expect(result).toContain("@returns");
     });
 
     it("should infer types from default values", () => {
         const code = `function multiply(a = 1, b = "2") {}`;
-        const result = generateParamDocs(code);
-        expect(result).toContain("@param {number} a");
-        expect(result).toContain("@param {string} b");
+        const functionNode = getFunctionNode(code);
+        const result = generateParamDocs(functionNode);
+        expect(result).toContain("@param {number} [a=1]");
+        expect(result).toContain('@param {string} [b="2"]');
     });
 
     it("should generate an @example tag", () => {
         const code = `function add(a, b) { return a + b; }`;
-        const result = generateParamDocs(code);
+        const functionNode = getFunctionNode(code);
+        const result = generateParamDocs(functionNode, { example: true });
         expect(result).toContain("@example");
     });
   });

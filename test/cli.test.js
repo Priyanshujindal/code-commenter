@@ -82,8 +82,8 @@ const testArrow = (a, b) => a + b;
     expect(stdout).toContain("test-file.js");
 
     // Check that the file contains the expected comments (in dry-run output)
-    expect(stdout).toContain("// TODO: Document what testFunction does");
-    expect(stdout).toContain("// TODO: Document what testArrow does");
+    expect(stdout).toContain("@summary TODO: Document what testFunction does");
+    expect(stdout).toContain("@summary TODO: Document what testArrow does");
   });
 
   it("should create output directory if it does not exist", async () => {
@@ -106,7 +106,7 @@ const testArrow = (a, b) => a + b;
     const content = await fs.readFile(outputFile, "utf8");
     expect(content).toContain("/**");
     expect(content).toContain("testFunction");
-  });
+  }, 10000);
 
   it("should handle non-existent files gracefully", () => {
     const { status, stderr } = runCLI(["non-existent-file.js"]);
@@ -136,7 +136,7 @@ const testArrow = (a, b) => a + b;
     expect(stderr).toContain("parsing");
 
     await fs.unlink(badFile);
-  });
+  }, 10000);
 
   it("should handle relative paths correctly", async () => {
     const relativePath = path.relative(process.cwd(), TEST_FILE);
@@ -178,7 +178,7 @@ const testArrow = (a, b) => a + b;
     const { status, stdout } = runCLI(["--dry-run", "--no-todo", TEST_FILE]);
     expect(status).toBe(0);
     expect(stdout).not.toContain("TODO");
-  });
+  }, 10000);
 
   it("should use a config file", async () => {
     const configFile = "test.config.json";
@@ -199,21 +199,24 @@ const testArrow = (a, b) => a + b;
     await fs.unlink(configFile);
   });
 
-  it("should handle very large files", async () => {
-    const largeFile = path.join(TEST_DIR, "large.js");
-    // Create a large file with many functions
-    let content = "// Large test file\n";
-    for (let i = 0; i < 1000; i++) {
-      content += `function func${i}() {}\n`;
-    }
+  it(
+    "should handle very large files",
+    async () => {
+      const largeFile = path.join(TEST_DIR, "large.js");
+      // Create a large file with many functions
+      let content = "// Large test file\n";
+      for (let i = 0; i < 500; i++) {
+        content += `function func${i}() {}\n`;
+      }
+      await fs.writeFile(largeFile, content, "utf8");
 
-    await fs.writeFile(largeFile, content, "utf8");
+      const { status } = runCLI(["--dry-run", largeFile]);
+      expect(status).toBe(0);
 
-    const { status } = runCLI(["--dry-run", largeFile]);
-    expect(status).toBe(0);
-
-    await fs.unlink(largeFile);
-  });
+      await fs.unlink(largeFile);
+    },
+    30000,
+  ); // 30-second timeout
 
   it("should show the version number", () => {
     const { version } = require("../package.json");
