@@ -110,7 +110,7 @@ const testArrow = (a, b) => a + b;
 
   it("should handle non-existent files gracefully", () => {
     const { status, stderr } = runCLI(["non-existent-file.js"]);
-    expect(status).not.toBe(0);
+    expect(status).toBe(1);
     expect(stderr).toContain("Error");
     expect(stderr).toContain("No files found matching the patterns");
   });
@@ -126,17 +126,18 @@ const testArrow = (a, b) => a + b;
     await fs.unlink(emptyFile);
   }, 20000);
 
-  it("should handle files with syntax errors gracefully", async () => {
-    const badFile = path.join(TEST_DIR, "syntax-error.js");
-    await fs.writeFile(badFile, "function test() {", "utf8");
+  it("should handle files with syntax errors gracefully", () => {
+    const badFile = path.join(TEST_DIR, "bad-file.js");
+    const fsSync = require("fs");
+    fsSync.writeFileSync(badFile, "function ( {");
 
     const { status, stderr } = runCLI([badFile]);
-    expect(status).not.toBe(0);
+    expect(status).toBe(1);
     expect(stderr).toContain("Error");
     expect(stderr).toContain("parsing");
 
-    await fs.unlink(badFile);
-  }, 20000);
+    fsSync.unlinkSync(badFile);
+  });
 
   it("should handle relative paths correctly", async () => {
     const relativePath = path.relative(process.cwd(), TEST_FILE);
@@ -174,14 +175,14 @@ const testArrow = (a, b) => a + b;
     await Promise.all([fs.unlink(file1), fs.unlink(file2)]);
   }, 20000);
 
-  it("should respect the --no-todo flag", async () => {
+  it("should respect the --no-todo flag", () => {
     const { status, stdout } = runCLI(["--dry-run", "--no-todo", TEST_FILE]);
     expect(status).toBe(0);
     expect(stdout).not.toContain("TODO");
-  }, 20000);
+  });
 
   it("should use a config file", async () => {
-    const configFile = "test.config.json";
+    const configFile = path.join(TEST_DIR, "code-commenter.config.js");
     const config = {
       jsdocTemplate: "/**\n * {name}\n * {params}\n * {returns}\n */",
     };
