@@ -225,6 +225,26 @@ async function processFile(filePath, options = {}) {
             }
           }
         },
+        Property(node) {
+            if (
+              (node.value.type === "ArrowFunctionExpression" ||
+                node.value.type === "FunctionExpression") &&
+              !hasLeadingComment(node, code)
+            ) {
+              const comment = generateFunctionComment(
+                node.value,
+                code,
+                node.key.name,
+                options,
+              );
+              if (comment) {
+                commentsToInsert.push({
+                  position: node.start,
+                  text: formatComment(comment, code, node.loc.start.line),
+                });
+              }
+            }
+        },
         MethodDefinition(node) {
           if (
             ["method", "constructor", "get", "set"].includes(node.kind) &&
@@ -253,26 +273,6 @@ async function processFile(filePath, options = {}) {
                 { ...options, isTypeScript },
               );
             }
-            if (comment) {
-              commentsToInsert.push({
-                position: node.start,
-                text: formatComment(comment, code, node.loc.start.line),
-              });
-            }
-          }
-        },
-        Property(node) {
-          if (
-            (node.value.type === "ArrowFunctionExpression" ||
-              node.value.type === "FunctionExpression") &&
-            !hasLeadingComment(node, code)
-          ) {
-            const comment = generateFunctionComment(
-              node.value,
-              code,
-              node.key.name || "Function",
-              { ...options, isTypeScript },
-            );
             if (comment) {
               commentsToInsert.push({
                 position: node.start,
