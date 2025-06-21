@@ -305,16 +305,21 @@ async function processFile(filePath, options = {}) {
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
     }
 
-    // Sort comments by position (in reverse to avoid offset issues)
+    // Sort comments in reverse order to avoid position conflicts
     const sortedComments = [...commentsToInsert].sort(
       (a, b) => b.position - a.position,
     );
 
-    // Generate new code with comments
-    let newCode = code;
+    const parts = [];
+    let lastPosition = code.length;
+
     for (const { position, text } of sortedComments) {
-      newCode = newCode.slice(0, position) + text + newCode.slice(position);
+      parts.unshift(code.substring(position, lastPosition));
+      parts.unshift(text);
+      lastPosition = position;
     }
+    parts.unshift(code.substring(0, lastPosition));
+    const newCode = parts.join("");
 
     // Handle output based on options
     let outputPath = filePath;
@@ -327,8 +332,10 @@ async function processFile(filePath, options = {}) {
     if (!options.dryRun) {
       await fs.writeFile(outputPath, newCode, "utf8");
     } else {
-      console.log("(dry run)", filePath);
-      console.log(newCode);
+      if (!process.env.BENCHMARK) {
+        console.log(`(dry run) ${filePath}`);
+        console.log(newCode);
+      }
       return {
         commentsAdded: commentsToInsert.length,
         skipped: false,
