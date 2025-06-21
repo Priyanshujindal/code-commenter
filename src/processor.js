@@ -476,7 +476,7 @@ async function processFiles(patterns, options = {}) {
     const mergedOptions = { ...config, ...options };
 
     debug("Searching for files matching patterns:", patterns);
-    const files = await glob(patterns, { nodir: true });
+    const files = await glob(patterns, { nodir: true, follow: true });
     if (files.length === 0) {
       const msg = "Error: No files found matching the patterns";
       console.error(msg);
