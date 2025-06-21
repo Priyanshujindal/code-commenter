@@ -64,7 +64,7 @@
   },
   "homepage": "https://github.com/Priyanshujindal/code-commenter#readme",
   "engines": {
-    "node": ">=14.0.0"
+    "node": ">=16.0.0"
   },
   "dependencies": {
     "@typescript-eslint/typescript-estree": "^8.34.1",
