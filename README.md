@@ -11,6 +11,7 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
 
 - Automatically adds JSDoc comments to JavaScript and TypeScript functions.
 - Supports function declarations, arrow functions, class methods, getters, and setters.
+- Automatically adds `@returns` tag if a return statement is present.
 - Handles complex parameter patterns, including:
   - Deeply nested and destructured parameters.
   - Rest parameters and TypeScript parameter properties.
@@ -19,6 +20,7 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
 - Customizable comment templates via `code-commenter.config.json`.
 - Skips already-documented functions.
 - Robust error handling and a user-friendly CLI.
+- Standard `--version` flag to display the current version.
 
 ## Quick Start
 
@@ -62,16 +64,21 @@ code-commenter <file/glob> [options]
   ```sh
   code-commenter "src/**/*.js" --output commented
   ```
+- Check the current version:
+  ```sh
+  code-commenter --version
+  ```
 
 ### Options
 
 | Option      | Description                                            |
 | ----------- | ------------------------------------------------------ |
-| `--dry-run` | Show what would change, but don't write files          |
-| `--output`  | Directory to write output files to (default: in-place) |
 | `--config`  | Path to a custom JSON configuration file                |
 | `--debug`   | Show debug output                                      |
+| `--dry-run` | Show what would change, but don't write files          |
 | `--help`    | Show CLI help                                          |
+| `--output`  | Directory to write output files to (default: in-place) |
+| `--version` | Show the current version                               |
 
 ## Advanced Features
 
@@ -104,6 +111,7 @@ function processData({ data: { id, values: [val1, val2] }, options: { enabled } 
  * @param {any} param1.data.values - Property 'values'
  * @param {Object} param1.options - Property 'options'
  * @param {any} param1.options.enabled - Property 'enabled'
+ * @returns {any} - The return value
  */
 ```
 
@@ -131,11 +139,13 @@ const utils = {
  * add
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
+ * @returns {any} - The return value
  */
 /**
  * subtract
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
+ * @returns {any} - The return value
  */
 ```
 
@@ -146,6 +156,7 @@ code-commenter fully supports TypeScript files (`.ts`) and can extract parameter
 - **Parameter Properties**: Class constructor parameters with access modifiers are marked as parameter properties in the JSDoc.
 - **Destructured Parameters**: If a destructured parameter has a type annotation (e.g., `{a, b}: MyType`), the type is used in the JSDoc.
 - **Rest Parameters**: Rest parameters are documented as `@param {...Type} name`.
+- **`@returns` tag**: Automatically added if a `return` statement is found.
 
 **Example:**
 
@@ -167,6 +178,7 @@ The generated JSDoc will look like:
  * @param {string} foo (parameter property)
  * @param {BarType} param1 - Destructured parameter
  * @param {...number[]} args
+ * @returns {any} - The return value
  */
 ```
 
