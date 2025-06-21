@@ -36,6 +36,7 @@ code-commenter "src/**/*.ts"
 ```
 
 3. **See the results:**
+
 - Your files will be updated in-place with JSDoc comments above each function.
 - Use `--dry-run` to preview changes without writing files.
 
@@ -62,16 +63,17 @@ code-commenter <file/glob> [options]
 
 ### Options
 
-| Option         | Description                                              |
-| --------------| -------------------------------------------------------- |
-| `--dry-run`   | Show what would change, but don't write files            |
-| `--output`    | Directory to write output files to (default: in-place)   |
-| `--debug`     | Show debug output                                        |
-| `--help`      | Show CLI help                                            |
+| Option      | Description                                            |
+| ----------- | ------------------------------------------------------ |
+| `--dry-run` | Show what would change, but don't write files          |
+| `--output`  | Directory to write output files to (default: in-place) |
+| `--debug`   | Show debug output                                      |
+| `--help`    | Show CLI help                                          |
 
 ## Comment Detection
 
 code-commenter will skip functions that already have a documentation comment immediately above them. It recognizes:
+
 - Single-line comments: `// ...`
 - Multi-line comments: `/* ... */`
 - JSDoc comments: `/** ... */`
@@ -90,8 +92,8 @@ code-commenter fully supports TypeScript files (`.ts`) and can extract parameter
 class Example {
   constructor(
     public foo: string, // parameter property
-    { a, b }: BarType,  // destructured with type
-    ...args: number[]   // rest parameter
+    { a, b }: BarType, // destructured with type
+    ...args: number[] // rest parameter
   ) {}
 }
 ```
@@ -134,12 +136,14 @@ This tool is production-ready and fully tested. All features and edge cases are 
 ### Getting Started
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/Priyanshujindal/code-commenter.git
    cd code-commenter
    ```
 
 2. Install dependencies:
+
    ```bash
    npm install
    ```

@@ -1,22 +1,22 @@
 #!/usr/bin/env node
 
-'use strict';
+"use strict";
 
-console.log('Testing processor directly...');
-console.log('Node.js version:', process.version);
+console.log("Testing processor directly...");
+console.log("Node.js version:", process.version);
 
-const { processFile } = require('./src/processor');
+const { processFile } = require("./src/processor");
 
 async function runTest() {
   try {
-    console.log('Starting test...');
-    const result = await processFile('test-function.js', { debug: true });
-    console.log('Test completed successfully');
-    console.log('Result:', result);
+    console.log("Starting test...");
+    const result = await processFile("test-function.js", { debug: true });
+    console.log("Test completed successfully");
+    console.log("Result:", result);
   } catch (error) {
-    console.error('Test failed with error:');
-    console.error('Message:', error.message);
-    console.error('Stack:', error.stack);
+    console.error("Test failed with error:");
+    console.error("Message:", error.message);
+    console.error("Stack:", error.stack);
     process.exit(1);
   }
 }

@@ -28,7 +28,7 @@ class Calculator {
    * @returns {number} Result of division
    */
   divide(a, b) {
-    if (b === 0) throw new Error('Division by zero');
+    if (b === 0) throw new Error("Division by zero");
     return a / b;
   }
 
@@ -39,7 +39,7 @@ class Calculator {
 }
 
 // Function with default parameters
-function greet(name = 'stranger', greeting = 'Hello') {
+function greet(name = "stranger", greeting = "Hello") {
   return `${greeting}, ${name}!`;
 }
 
@@ -58,7 +58,7 @@ function createUser(name, age) {
   return {
     name,
     age,
-    isAdult: age >= 18
+    isAdult: age >= 18,
   };
 }
 
@@ -78,5 +78,5 @@ module.exports = {
   sumAll,
   getFullName,
   createUser,
-  fetchData
+  fetchData,
 };

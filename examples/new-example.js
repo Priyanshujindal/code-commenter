@@ -25,5 +25,5 @@ class User {
 }
 
 // Example usage
-const user = new User('John', 30);
-user.greet(); 
+const user = new User("John", 30);
+user.greet();

@@ -28,7 +28,7 @@ const multiply = (a, b) => a * b;
 const calculator = {
   // Method with missing documentation
   divide(a, b) {
-    if (b === 0) throw new Error('Division by zero');
+    if (b === 0) throw new Error("Division by zero");
     return a / b;
   },
 
@@ -39,9 +39,9 @@ const calculator = {
    * @param {number} exponent - The exponent
    * @returns {number} The result of base^exponent
    */
-  power: function(base, exponent) {
+  power: function (base, exponent) {
     return Math.pow(base, exponent);
-  }
+  },
 };
 
 // Class with methods
@@ -56,7 +56,7 @@ class User {
     return {
       name: this.name,
       email: this.email,
-      joined: new Date().toISOString()
+      joined: new Date().toISOString(),
     };
   }
 
@@ -76,9 +76,9 @@ class User {
 function processUserData(users, options = {}) {
   const { filter, sortBy, limit } = {
     filter: () => true,
-    sortBy: 'name',
+    sortBy: "name",
     limit: 10,
-    ...options
+    ...options,
   };
 
   return users
@@ -89,7 +89,7 @@ function processUserData(users, options = {}) {
 
 // Example of a higher-order function
 function createLogger(prefix) {
-  return function(...args) {
+  return function (...args) {
     console.log(`[${prefix}]`, ...args);
   };
 }
@@ -98,7 +98,7 @@ function createLogger(prefix) {
 function fetchData(url, callback) {
   // Simulate async operation
   setTimeout(() => {
-    callback(null, { data: 'Sample data' });
+    callback(null, { data: "Sample data" });
   }, 100);
 }
 
@@ -106,7 +106,7 @@ function fetchData(url, callback) {
 function fetchDataAsync(url) {
   return new Promise((resolve) => {
     setTimeout(() => {
-      resolve({ data: 'Sample async data' });
+      resolve({ data: "Sample async data" });
     }, 100);
   });
 }
@@ -117,7 +117,7 @@ async function getUserPosts(userId) {
     const response = await fetchDataAsync(`/api/users/${userId}/posts`);
     return response.data;
   } catch (error) {
-    console.error('Failed to fetch user posts:', error);
+    console.error("Failed to fetch user posts:", error);
     throw error;
   }
 }
@@ -134,5 +134,5 @@ module.exports = {
   createLogger,
   fetchData,
   fetchDataAsync,
-  getUserPosts
+  getUserPosts,
 };

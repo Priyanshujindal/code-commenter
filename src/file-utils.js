@@ -1,9 +1,9 @@
-const fs = require('fs/promises');
-const path = require('path');
-const { promisify } = require('util');
-const { glob } = require('glob');
-const fsExtra = require('fs-extra');
-const chalk = require('chalk');
+const fs = require("fs/promises");
+const path = require("path");
+const { promisify } = require("util");
+const { glob } = require("glob");
+const fsExtra = require("fs-extra");
+const chalk = require("chalk");
 
 // No need for promisify as glob already returns a Promise
 
@@ -16,16 +16,18 @@ async function findJsFiles(patterns) {
   try {
     const patternList = Array.isArray(patterns) ? patterns : [patterns];
     const results = await Promise.all(
-      patternList.map(pattern =>
+      patternList.map((pattern) =>
         glob(pattern, {
           nodir: true,
-          ignore: ['**/node_modules/**', '**/.git/**']
-        })
-      )
+          ignore: ["**/node_modules/**", "**/.git/**"],
+        }),
+      ),
     );
     return Array.from(new Set(results.flat()));
   } catch (error) {
-    console.error(chalk.red(`Error finding JavaScript files: ${error.message}`));
+    console.error(
+      chalk.red(`Error finding JavaScript files: ${error.message}`),
+    );
     throw error;
   }
 }
@@ -69,13 +71,13 @@ function getRelativePath(from, to) {
  * @returns {string} Formatted file size
  */
 function formatFileSize(bytes) {
-  if (bytes === 0) return '0 Bytes';
+  if (bytes === 0) return "0 Bytes";
 
   const k = 1024;
-  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const sizes = ["Bytes", "KB", "MB", "GB"];
   const i = Math.floor(Math.log(bytes) / Math.log(k));
 
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
 }
 
 /**
@@ -90,10 +92,12 @@ async function getFileStats(filePath) {
       size: stats.size,
       sizeFormatted: formatFileSize(stats.size),
       modified: stats.mtime,
-      isDirectory: stats.isDirectory()
+      isDirectory: stats.isDirectory(),
     };
   } catch (error) {
-    console.error(chalk.red(`Error getting file stats for ${filePath}: ${error.message}`));
+    console.error(
+      chalk.red(`Error getting file stats for ${filePath}: ${error.message}`),
+    );
     throw error;
   }
 }
@@ -104,5 +108,5 @@ module.exports = {
   getRelativePath,
   formatFileSize,
   getFileStats,
-  findJsFiles
+  findJsFiles,
 };

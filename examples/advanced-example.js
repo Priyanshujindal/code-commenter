@@ -1,21 +1,25 @@
 // examples/advanced-example.js
 
 // Top-level function with destructuring and default params
-function processOrder({ id, items = [], user = {} }, status = 'pending', ...rest) {
+function processOrder(
+  { id, items = [], user = {} },
+  status = "pending",
+  ...rest
+) {
   function calculateTotal(items) {
-    return items.reduce((sum, item) => sum + (item.price * (item.qty ?? 1)), 0);
+    return items.reduce((sum, item) => sum + item.price * (item.qty ?? 1), 0);
   }
   const total = calculateTotal(items);
   return { id, total, status, ...rest };
 }
 
 // Arrow function with default and rest
-const logMessages = (level = 'info', ...messages) => {
-  messages.forEach(msg => console.log(`[${level}]`, msg));
+const logMessages = (level = "info", ...messages) => {
+  messages.forEach((msg) => console.log(`[${level}]`, msg));
 };
 
 // Async function
-async function fetchData(url, { method = 'GET', headers = {} } = {}) {
+async function fetchData(url, { method = "GET", headers = {} } = {}) {
   const response = await fetch(url, { method, headers });
   return response.json();
 }
@@ -50,4 +54,4 @@ function outer(a) {
   return function inner(b) {
     return a + b;
   };
-} 
+}

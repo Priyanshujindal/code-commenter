@@ -7,7 +7,10 @@ function add(a: number, b: number): number {
 const multiply = (x: number, y: number): number => x * y;
 
 class User {
-  constructor(public name: string, private age: number) {}
+  constructor(
+    public name: string,
+    private age: number,
+  ) {}
 
   get info(): string {
     return `${this.name} (${this.age})`;
@@ -38,14 +41,17 @@ type Shape = Point & { area: () => number };
 
 // Function using interface and type alias
 function describeShape(shape: Shape): string {
-  return `${shape.label ?? 'Shape'} at (${shape.x},${shape.y}) with area ${shape.area()}`;
+  return `${shape.label ?? "Shape"} at (${shape.x},${shape.y}) with area ${shape.area()}`;
 }
 
 // Arrow function with generic and default
-const makeArray = <T = number>(len: number, value: T): T[] => Array(len).fill(value);
+const makeArray = <T = number>(len: number, value: T): T[] =>
+  Array(len).fill(value);
 
 // Class with generic, parameter property, and method
 class Box<T> {
   constructor(public value: T) {}
-  getValue(): T { return this.value; }
-} 
+  getValue(): T {
+    return this.value;
+  }
+}

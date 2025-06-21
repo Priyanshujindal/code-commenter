@@ -11,12 +11,11 @@ function add(a, b) {
   return a + b;
 }
 
-const
-// TODO: Document what multiply does
-/**
- * multiply
- * @param {any} x - Description
- * @param {any} y - Description
- * @returns {any} Return value
- */
-multiply = (x, y) => x * y; 
+const // TODO: Document what multiply does
+  /**
+   * multiply
+   * @param {any} x - Description
+   * @param {any} y - Description
+   * @returns {any} Return value
+   */
+  multiply = (x, y) => x * y;

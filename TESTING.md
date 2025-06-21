@@ -5,6 +5,7 @@ This document explains how to test the code-commenter tool manually.
 ## Prerequisites
 
 1. Install dependencies:
+
    ```bash
    npm install
    ```
@@ -14,6 +15,7 @@ This document explains how to test the code-commenter tool manually.
 ## Running Tests
 
 1. **Run unit tests**:
+
    ```bash
    npm test
    ```
@@ -26,16 +28,19 @@ This document explains how to test the code-commenter tool manually.
 ## Testing the CLI
 
 1. **Basic usage** (modifies file in place):
+
    ```bash
    node bin/code-commenter.js test-math-utils.js
    ```
 
 2. **Dry run** (shows what would be changed without modifying files):
+
    ```bash
    node bin/code-commenter.js test-math-utils.js --dry-run
    ```
 
 3. **Output to a different directory**:
+
    ```bash
    node bin/code-commenter.js test-math-utils.js --output ./commented
    ```
@@ -57,6 +62,7 @@ After running the tool, check the output file for added comments. The tool shoul
 ## Example Output
 
 Before:
+
 ```javascript
 function add(a, b) {
   return a + b;
@@ -64,6 +70,7 @@ function add(a, b) {
 ```
 
 After:
+
 ```javascript
 /**
  * add
