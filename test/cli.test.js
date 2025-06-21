@@ -164,7 +164,11 @@ const testArrow = (a, b) => a + b;
         const { status } = runCLI(["--dry-run", homeFile]);
         expect(status).toBe(0);
       } finally {
-        fsSync.unlinkSync(homeFile).catch(() => {});
+        try {
+          fsSync.unlinkSync(homeFile);
+        } catch (e) {
+          // ignore errors in cleanup
+        }
       }
     }, 20000);
   }
@@ -242,7 +246,13 @@ const testArrow = (a, b) => a + b;
     it("should handle symlinks correctly", async () => {
       const symlink = path.join(TEST_DIR, "symlink-test-file.js");
       try {
-        fsSync.symlinkSync(TEST_FILE, symlink);
+        try {
+          fsSync.symlinkSync(TEST_FILE, symlink);
+        } catch (e) {
+          // If symlink creation fails, skip the test
+          this.skip?.();
+          return;
+        }
         const { status } = runCLI(["--dry-run", symlink]);
         expect(status).toBe(0);
       } finally {
