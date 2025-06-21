@@ -67,6 +67,8 @@ function extractObjectPatternProperties(properties, isTypeScript, parentName) {
                 if(typeof right.value === 'number') type = 'number';
                 if(typeof right.value === 'string') type = 'string';
                 if(typeof right.value === 'boolean') type = 'boolean';
+            } else if (right.type === 'ObjectExpression') {
+                type = 'Object';
             }
             valueNode = valueNode.left;
         }
@@ -76,10 +78,16 @@ function extractObjectPatternProperties(properties, isTypeScript, parentName) {
             param.defaultValue = defaultValue;
         }
 
-        if (valueNode.type === "ObjectPattern") {
+        if (valueNode.type === "ObjectPattern" || (prop.value.type === 'AssignmentPattern' && prop.value.right.type === 'ObjectExpression') ) {
             param.type = "Object";
+            let props;
+            if(valueNode.type === 'ObjectPattern') {
+                props = valueNode.properties;
+            } else {
+                props = prop.value.right.properties;
+            }
             param.properties = extractObjectPatternProperties(
-                valueNode.properties,
+                props,
                 isTypeScript,
                 propName
             );

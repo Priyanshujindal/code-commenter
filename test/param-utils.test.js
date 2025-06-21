@@ -267,7 +267,7 @@ describe("Parameter Utilities", () => {
 
       // Check for nested properties with default values
       expect(result).toContain("@param {number} param1.a=1 - Property 'a'");
-      expect(result).toContain("@param {any} param1.b=");
+      expect(result).toContain("@param {Object} param1.b - Property 'b'");
 
       // Check for rest parameter
       expect(result).toContain("@param {Object} param1.rest - Property 'rest'");
