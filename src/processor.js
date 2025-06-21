@@ -8,6 +8,7 @@ const util = require("util");
 const glob = require("glob").glob;
 const fsSync = require("fs");
 const { parse: tsParse } = require("@typescript-eslint/typescript-estree");
+const { codeFrameColumns } = require("@babel/code-frame");
 
 // Enable colors for console output
 const colors = require("colors/safe");
@@ -148,7 +149,12 @@ async function processFile(filePath, options = {}) {
       try {
         ast = tsParse(code, { loc: true, range: true });
       } catch (err) {
-        const msg = `Error: parsing failed for file: ${filePath}\n${err.message}`;
+        const location = { start: { line: err.lineNumber, column: err.column } };
+        const frame = codeFrameColumns(code, location, {
+          message: err.message,
+          highlightCode: true,
+        });
+        const msg = `Error: parsing failed for file: ${filePath}\n${frame}`;
         console.error(msg);
         if (options.exitOnError)
           return { error: msg, filePath, skipped: false, exitCode: 1 };
@@ -164,7 +170,12 @@ async function processFile(filePath, options = {}) {
           locations: true,
         });
       } catch (err) {
-        const msg = `Error: parsing failed for file: ${filePath}\n${err.message}`;
+        const { loc } = err;
+        const frame = codeFrameColumns(code, { start: loc }, {
+          message: err.message,
+          highlightCode: true,
+        });
+        const msg = `Error: parsing failed for file: ${filePath}\n${frame}`;
         console.error(msg);
         if (options.exitOnError)
           return { error: msg, filePath, skipped: false, exitCode: 1 };
@@ -286,7 +297,9 @@ async function processFile(filePath, options = {}) {
 
     // If no comments to add, return early
     if (commentsToInsert.length === 0) {
-      if (options.dryRun) {
+      if (!options.dryRun && options.output) {
+        console.log("(no changes needed)");
+      } else if (options.dryRun) {
         console.log("(no changes needed)");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };

@@ -77,6 +77,7 @@
     "glob": "^10.3.0"
   },
   "devDependencies": {
+    "@babel/code-frame": "^7.27.1",
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
     "cross-env": "^7.0.3",
@@ -84,6 +85,7 @@
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-jest": "^27.9.0",
+    "estree-walker-ts": "^1.1.0",
     "husky": "^9.0.11",
     "jest": "^29.7.0",
     "lint-staged": "^15.2.0",
