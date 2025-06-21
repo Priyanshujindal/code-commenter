@@ -299,6 +299,12 @@ function add(a, b) {
         expect(result).toContain("@param {number} a");
         expect(result).toContain("@param {string} b");
     });
+
+    it("should generate an @example tag", () => {
+        const code = `function add(a, b) { return a + b; }`;
+        const result = generateParamDocs(code);
+        expect(result).toContain("@example");
+    });
   });
 
   describe("TypeScript parameter extraction", () => {

@@ -221,6 +221,26 @@ function generateParamDocs(code) {
             paramDocs.push(`@returns {any} - The return value`);
         }
 
+        const functionName = functionNode.id ? functionNode.id.name : 'anonymous';
+        const exampleParams = params.map(p => {
+            switch (p.type) {
+                case 'string':
+                    return `'example'`;
+                case 'number':
+                    return `1`;
+                case 'boolean':
+                    return `true`;
+                case 'Object':
+                    return `{}`;
+                case 'Array':
+                    return `[]`;
+                default:
+                    return `null`;
+            }
+        }).join(', ');
+
+        paramDocs.push(`@example ${functionName}(${exampleParams})`);
+
         return paramDocs.join("\n");
     } catch (error) {
         // console.error("Error parsing code:", error);
