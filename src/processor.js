@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const walk = require("acorn-walk");
 const { parse } = require("acorn-loose");
-const { processFunctionNode, extractParams } = require("./param-utils");
+const { processFunctionNode, extractParams, findFunctionNode, generateParamDocs } = require("./param-utils");
 const { ensureDirectoryExists } = require("./file-utils");
 const glob = require("glob").glob;
 const { parse: tsParse } = require("@typescript-eslint/typescript-estree");
@@ -44,19 +44,33 @@ async function processFile(filePath, options = {}) {
     performanceWarning = '/** WARNING: File is very large, code-commenter may be incomplete or slow. */\n';
   }
 
+  // Skip files with existing JSDoc comment at the top
+  const lines = code.split(/\r?\n/);
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (line === '') continue;
+    if (line.startsWith('/**')) {
+      // Existing JSDoc at the top, skip file
+      return { commentsAdded: 0, skipped: true, exitCode: 0 };
+    }
+    break;
+  }
+
   // Helper for TypeScript AST traversal
   function visitTSNode(node, parent, code, options, commentsToInsert) {
     // FunctionDeclaration
     if (node.type === "FunctionDeclaration" && node.id && node.body) {
       if (!hasComment(node, code)) {
+        if (!node.params) node.params = [];
         const comment = generateFunctionComment(node, code, node.id.name, {
           ...options,
           isTypeScript,
+          smartSummary: true,
         });
         if (comment) {
           commentsToInsert.push({
-            position: node.range[0],
-            text: formatComment(comment, code, node.loc.start.line),
+            position: (node.range && node.range[0]) ? node.range[0] : 0,
+            text: formatComment(comment, code, (node.loc && node.loc.start && node.loc.start.line) ? node.loc.start.line : 1),
           });
         }
       }
@@ -66,16 +80,17 @@ async function processFile(filePath, options = {}) {
       for (const decl of node.declarations) {
         if (decl.init && decl.init.type === "ArrowFunctionExpression") {
           if (!hasComment(decl, code)) {
+            if (!decl.init.params) decl.init.params = [];
             const comment = generateFunctionComment(
               decl.init,
               code,
               decl.id.name,
-              { ...options, isTypeScript },
+              { ...options, isTypeScript, smartSummary: true },
             );
             if (comment) {
               commentsToInsert.push({
-                position: decl.range[0],
-                text: formatComment(comment, code, decl.loc.start.line),
+                position: (decl.range && decl.range[0]) ? decl.range[0] : 0,
+                text: formatComment(comment, code, (decl.loc && decl.loc.start && decl.loc.start.line) ? decl.loc.start.line : 1),
               });
             }
           }
@@ -86,33 +101,57 @@ async function processFile(filePath, options = {}) {
     if (node.type === "ClassDeclaration" && node.body && node.body.body) {
       for (const method of node.body.body) {
         if (["MethodDefinition", "TSDeclareMethod"].includes(method.type)) {
+          if (!method.value) continue;
+          if (!method.value.params) method.value.params = [];
           let comment;
           if (method.kind === "get") {
             comment = generateFunctionComment(
               method,
               code,
               `get ${method.key.name}`,
-              { ...options, isGetter: true, isTypeScript },
+              { ...options, isGetter: true, isTypeScript, smartSummary: true },
             );
           } else if (method.kind === "set") {
             comment = generateFunctionComment(
               method,
               code,
               `set ${method.key.name}`,
-              { ...options, isSetter: true, isTypeScript },
+              { ...options, isSetter: true, isTypeScript, smartSummary: true },
             );
           } else {
             comment = generateFunctionComment(method, code, method.key.name, {
               ...options,
               isTypeScript,
+              smartSummary: true,
             });
           }
           if (comment && !hasComment(method, code)) {
             commentsToInsert.push({
-              position: method.range[0],
-              text: formatComment(comment, code, method.loc.start.line),
+              position: (method.range && method.range[0]) ? method.range[0] : 0,
+              text: formatComment(comment, code, (method.loc && method.loc.start && method.loc.start.line) ? method.loc.start.line : 1),
             });
           }
+        }
+      }
+    }
+    // For each top-level statement, try to extract a function node
+    const functionNode = findFunctionNode(node);
+    if (functionNode && functionNode.params) {
+      let functionName = functionNode.id ? functionNode.id.name : (node.id ? node.id.name : undefined);
+      if (!functionName && node.type === "VariableDeclaration" && node.declarations[0]) {
+        functionName = node.declarations[0].id.name;
+      }
+      if (!hasComment(node, code)) {
+        const comment = generateFunctionComment(functionNode, code, functionName, {
+          ...options,
+          isTypeScript,
+          smartSummary: true,
+        });
+        if (comment) {
+          commentsToInsert.push({
+            position: (node.range && node.range[0]) ? node.range[0] : 0,
+            text: formatComment(comment, code, (node.loc && node.loc.start && node.loc.start.line) ? node.loc.start.line : 1),
+          });
         }
       }
     }
@@ -137,12 +176,9 @@ async function processFile(filePath, options = {}) {
     // Read the file
     // debug("Reading file content...");
     if (code.trim() === "") {
-      if (!options.dryRun && options.output) {
-        // eslint-disable-next-line no-console
-        console.log("(no changes needed)");
-      } else if (options.dryRun) {
-        // eslint-disable-next-line no-console
-        console.log("(no changes needed)");
+      if (options.dryRun) {
+        // Print as CLI expects
+        process.stdout.write("(no changes needed)\n");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
     }
@@ -151,6 +187,7 @@ async function processFile(filePath, options = {}) {
     // debug("Parsing code to AST...");
     let ast;
     let commentsToInsert = [];
+    const commentPositions = new Set();
     if (isTypeScript) {
       try {
         ast = tsParse(code, {
@@ -183,6 +220,7 @@ async function processFile(filePath, options = {}) {
           ecmaVersion: "latest",
           sourceType: "module",
           locations: true,
+          ranges: true,
           allowAwaitOutsideFunction: true,
           allowImportExportEverywhere: true,
           allowReturnOutsideFunction: true,
@@ -209,112 +247,91 @@ async function processFile(filePath, options = {}) {
 
       // Walk the AST to find functions without comments
       // debug("Walking AST to find functions...");
-      walk.simple(ast, {
-        FunctionDeclaration(node) {
-          if (!hasLeadingComment(node, code)) {
-            const comment = generateFunctionComment(
-              node,
-              code,
-              node.id?.name || "Function",
-              { ...options, isTypeScript },
-            );
-            if (comment) {
-              commentsToInsert.push({
-                position: node.start,
-                text: formatComment(comment, code, node.loc.start.line),
+      try {
+        walk.simple(ast, {
+          FunctionDeclaration(node) {
+            const has = hasComment(node, code);
+            if (!has) {
+              // Always pass node.id.name for named functions
+              const comment = generateFunctionComment(node, code, node.id ? node.id.name : undefined, {
+                ...options,
+                isTypeScript,
+                smartSummary: true,
               });
-            }
-          }
-        },
-        ArrowFunctionExpression(node) {
-          if (
-            node.parent &&
-            node.parent.type === "VariableDeclarator" &&
-            !hasLeadingComment(node.parent, code)
-          ) {
-            const comment = generateFunctionComment(
-              node,
-              code,
-              node.parent.id?.name || "Function",
-              { ...options, isTypeScript },
-            );
-            if (comment) {
-              commentsToInsert.push({
-                position: node.parent.start,
-                text: formatComment(comment, code, node.parent.loc.start.line),
-              });
-            }
-          }
-        },
-        Property(node) {
-            if (
-              (node.value.type === "ArrowFunctionExpression" ||
-                node.value.type === "FunctionExpression") &&
-              !hasLeadingComment(node, code)
-            ) {
-              const comment = generateFunctionComment(
-                node.value,
-                code,
-                node.key.name,
-                options,
-              );
               if (comment) {
-                commentsToInsert.push({
-                  position: node.start,
-                  text: formatComment(comment, code, node.loc.start.line),
-                });
+                const pos = (node.range && node.range[0]) ? node.range[0] : 0;
+                if (!commentPositions.has(pos)) {
+                  commentsToInsert.push({ position: pos, text: comment });
+                  commentPositions.add(pos);
+                }
               }
             }
-        },
-        MethodDefinition(node) {
-          if (
-            ["method", "constructor", "get", "set"].includes(node.kind) &&
-            !hasLeadingComment(node, code)
-          ) {
-            let comment;
-            if (node.kind === "get") {
-              comment = generateFunctionComment(
-                node.value,
-                code,
-                `get ${node.key.name}`,
-                { ...options, isGetter: true, isTypeScript },
-              );
-            } else if (node.kind === "set") {
-              comment = generateFunctionComment(
-                node.value,
-                code,
-                `set ${node.key.name}`,
-                { ...options, isSetter: true, isTypeScript },
-              );
-            } else {
-              comment = generateFunctionComment(
-                node.value,
-                code,
-                node.key.name,
-                { ...options, isTypeScript },
-              );
-            }
-            if (comment) {
-              commentsToInsert.push({
-                position: node.start,
-                text: formatComment(comment, code, node.loc.start.line),
+          },
+          FunctionExpression(node) {
+            const has = hasComment(node, code);
+            if (!has) {
+              // Pass node.id.name if available, else undefined
+              const comment = generateFunctionComment(node, code, node.id ? node.id.name : undefined, {
+                ...options,
+                isTypeScript,
+                smartSummary: true,
               });
+              if (comment) {
+                const pos = (node.range && node.range[0]) ? node.range[0] : 0;
+                if (!commentPositions.has(pos)) {
+                  commentsToInsert.push({ position: pos, text: comment });
+                  commentPositions.add(pos);
+                }
+              }
             }
-          }
-        },
-      });
+          },
+          ArrowFunctionExpression(node) {
+            const has = hasComment(node, code);
+            if (!has) {
+              // Arrow functions are usually anonymous
+              const comment = generateFunctionComment(node, code, undefined, {
+                ...options,
+                isTypeScript,
+                smartSummary: true,
+              });
+              if (comment) {
+                const pos = (node.range && node.range[0]) ? node.range[0] : 0;
+                if (!commentPositions.has(pos)) {
+                  commentsToInsert.push({ position: pos, text: comment });
+                  commentPositions.add(pos);
+                }
+              }
+            }
+          },
+          MethodDefinition(node) {
+            const has = hasComment(node, code);
+            if (!has && node.value) {
+              const comment = generateFunctionComment(node.value, code, node.key && node.key.name ? node.key.name : undefined, {
+                ...options,
+                isTypeScript,
+                smartSummary: true,
+              });
+              if (comment) {
+                const pos = (node.range && node.range[0]) ? node.range[0] : 0;
+                if (!commentPositions.has(pos)) {
+                  commentsToInsert.push({ position: pos, text: comment });
+                  commentPositions.add(pos);
+                }
+              }
+            }
+          },
+        });
+      } catch (err) {
+        console.error('AST traversal error:', err);
+      }
     }
 
-    // If no comments to add, return early
     if (commentsToInsert.length === 0) {
-      if (!options.dryRun && options.output) {
-        // eslint-disable-next-line no-console
-        console.log("(no changes needed)");
-      } else if (options.dryRun) {
-        // eslint-disable-next-line no-console
-        console.log("(no changes needed)");
-      }
-      return { commentsAdded: 0, skipped: true, exitCode: 0 };
+      // fallback for files with no functions or no comments generated
+      commentsToInsert.push({
+        position: 0,
+        text: "/** TODO: Parsing failed for this function. Please check manually. */\n",
+      });
     }
 
     // Sort comments in reverse order to avoid position conflicts
@@ -451,65 +468,9 @@ function hasLeadingComment(node, code) {
  * @returns {string|null} Generated comment or null if not needed
  */
 function generateFunctionComment(node, code, functionName = "", options = {}) {
-  if (process.env.DEBUG) {
-    // console.error('DEBUG generateFunctionComment options.noTodo:', options.noTodo);
-  }
-  // Heuristic summary generation
-  function makeSummary(name, params, returnType) {
-    if (!name || name === 'anonymous' || name === 'Function') return null;
-    let summary = '';
-    // Try to infer action from function name
-    if (/^(get|set|is|has|can|should|fetch|load|find|create|update|delete|remove|add|calculate|compute|build|render|parse|format|convert|to)[A-Z_]/.test(name)) {
-      // Split camelCase or snake_case
-      const readable = name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
-      summary = readable.charAt(0).toUpperCase() + readable.slice(1);
-    } else {
-      summary = `Function ${name}`;
-    }
-    if (params && params.length > 0) {
-      summary += ' with parameter' + (params.length > 1 ? 's' : '') +
-        ' ' + params.map(p => `'${p.name}'`).join(', ');
-    }
-    if (returnType && returnType !== 'void') {
-      summary += `. Returns ${returnType}.`;
-    }
-    return summary;
-  }
-  try {
-    const paramDocs = processFunctionNode(node, options);
-    let comment = "/**\n";
-    let summaryLine = null;
-    if (options.noTodo) {
-      summaryLine = functionName || "Function";
-    } else if (options.smartSummary) {
-      // Try to generate a smart summary using extractParams
-      const isTypeScript = options.isTypeScript || false;
-      const paramsExtracted = extractParams(node, isTypeScript);
-      const paramNames = paramsExtracted.map(p => p.name);
-      const isValidIdentifier = name => !!name && name !== 'undefined' && !/^param\d+$/.test(name) && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
-      const hasInvalid = paramNames.length === 0 || paramNames.some(p => !isValidIdentifier(p));
-      const returnType = (node.returnType && node.returnType.typeAnnotation && node.returnType.typeAnnotation.type) ? node.returnType.typeAnnotation.type : null;
-      if (hasInvalid) {
-        summaryLine = `TODO: Describe what this function does (auto-generated)`;
-      } else {
-        summaryLine = makeSummary(functionName, paramNames, returnType) || `TODO: Describe what this function does (auto-generated)`;
-      }
-    } else {
-      summaryLine = `TODO: Describe what this function does (auto-generated)`;
-    }
-    comment += ` * @summary ${summaryLine}\n`;
-    if (paramDocs) {
-      if (!options.noTodo) {
-        comment += ` * \n`;
-      }
-      comment += ` * ${paramDocs}\n`;
-    }
-    comment += " */";
-    return comment;
-  } catch (error) {
-    // If error, return a warning comment
-    return '/** TODO: Parsing failed for this function. Please check manually. */';
-  }
+  // Always delegate summary and doc generation to generateParamDocs
+  const doc = generateParamDocs(node, options, functionName);
+  return doc;
 }
 
 /**

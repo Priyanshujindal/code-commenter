@@ -315,13 +315,7 @@ describe("Parameter Utilities", () => {
       const ast = parseCode(code);
       // Find the FunctionDeclaration node
       const functionNode = ast.body.find(n => n.type === 'FunctionDeclaration');
-      // Debug output
-      console.log('DEBUG functionNode.params:', JSON.stringify(functionNode.params, null, 2));
-      const { extractParams } = require('../src/param-utils');
-      console.log('DEBUG extractParams:', JSON.stringify(extractParams(functionNode), null, 2));
       const result = generateParamDocs(functionNode);
-      // Debug output
-      console.log('TEST DEBUG JSDoc:', result);
       // Check for flattened destructured properties (allow for alignment)
       expect(result).toMatch(/@param \{number\}\s+a\s+- Default value: `1`\. - Property 'a'/);
       expect(result).toMatch(/@param \{Object\}\s+b\s+- Property 'b'/);

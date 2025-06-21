@@ -218,7 +218,7 @@ function findFunctionNode(ast) {
     return null;
 }
 
-function generateParamDocs(functionNode, options = {}) {
+function generateParamDocs(functionNode, options = {}, functionNameArg) {
     try {
         if (!functionNode) return "";
 
@@ -317,36 +317,57 @@ function generateParamDocs(functionNode, options = {}) {
             }
             paramDocs.push(`@returns {${returnType}} - The return value`);
         }
-        const functionName = functionNode.id ? functionNode.id.name : 'anonymous';
-        if (params.length > 0 && options.example) {
-            const exampleParams = params.map(p => {
-                switch (p.type) {
-                    case 'string':
-                        return `'example'`;
-                    case 'number':
-                        return `1`;
-                    case 'boolean':
-                        return `true`;
-                    case 'Object':
-                        return `{}`;
-                    case 'Array':
-                        return `[]`;
-                    default:
-                        return `null`;
-                }
-            }).join(', ');
-
-            paramDocs.push(`@example ${functionName}(${exampleParams})`);
+        // Smart summary logic
+        const isValidIdentifier = name => !!name && name !== 'undefined' && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
+        const paramNames = params.map(p => p.name);
+        let functionName = functionNameArg;
+        if (!functionName) {
+            functionName = functionNode.id ? functionNode.id.name : 'anonymous';
         }
-
-        return paramDocs.join("\n * ");
+        const hasValidNames = paramNames.length > 0 && paramNames.every(p => isValidIdentifier(p.trim()));
+        let summaryLine = '';
+        if (hasValidNames) {
+            if (functionName && functionName !== 'anonymous') {
+                if (paramNames.length === 1) {
+                    summaryLine = `Function ${functionName} with parameter '${paramNames[0]}'`;
+                } else {
+                    summaryLine = `Function ${functionName} with parameters '${paramNames.join("', '")}'`;
+                }
+            } else {
+                if (paramNames.length === 1) {
+                    summaryLine = `Function with parameter '${paramNames[0]}'`;
+                } else {
+                    summaryLine = `Function with parameters '${paramNames.join("', '")}'`;
+                }
+            }
+        } else {
+            // Only use the placeholder for truly unparseable/anonymous functions
+            summaryLine = 'TODO: Describe what this function does (auto-generated)';
+        }
+        // Build JSDoc block
+        let doc = "/**\n";
+        doc += ` * @summary ${summaryLine}\n`;
+        // Add @example if requested
+        if (options.example) {
+            const exampleCall = functionName && functionName !== 'anonymous'
+                ? functionName + '(' + paramNames.map(n => n || 'value').join(', ') + ')'
+                : 'function(' + paramNames.map(n => n || 'value').join(', ') + ')';
+            doc += ` * @example\n * ${exampleCall}\n`;
+        }
+        if (paramDocs.length > 0) {
+            doc += ` * \n`;
+            doc += paramDocs.map(line => ` * ${line}`).join("\n");
+            doc += "\n";
+        }
+        doc += " */";
+        return doc;
     } catch (error) {
         return "";
     }
 }
 
-function processFunctionNode(node, options = {}) {
-    return generateParamDocs(node, options);
+function processFunctionNode(node, options = {}, functionName) {
+    return generateParamDocs(node, options, functionName);
 }
 
 function getReturnType(functionNode, isTypeScript) {
@@ -372,6 +393,15 @@ function getReturnType(functionNode, isTypeScript) {
     return null;
 }
 
+function generateFunctionComment(node, code, functionName = "", options = {}) {
+    const params = extractParams(node, options.isTypeScript);
+    const doc = generateParamDocs(node, options, functionName);
+    if (!doc) {
+        return "/** TODO: Parsing failed for this function. Please check manually. */";
+    }
+    return doc;
+}
+
 module.exports = {
     generateParamDocs,
     processFunctionNode,
@@ -379,4 +409,5 @@ module.exports = {
     extractParam,
     getReturnType,
     findFunctionNode,
+    generateFunctionComment,
 };

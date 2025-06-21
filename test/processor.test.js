@@ -32,6 +32,23 @@ class Calculator {
     // Mock file reading for any file, as the content is the same for all tests
     fs.readFile.mockResolvedValue(testCode);
 
+    // Parse the test code and extract function nodes with parameters
+    const acorn = require('acorn');
+    const ast = acorn.parse(testCode, { ecmaVersion: 'latest', sourceType: 'module' });
+    global._testFunctionNodes = [];
+    function collectFunctions(node) {
+      if (!node || typeof node !== 'object') return;
+      if (node.type === 'FunctionDeclaration' || node.type === 'FunctionExpression' || node.type === 'ArrowFunctionExpression') {
+        global._testFunctionNodes.push(node);
+      }
+      for (const key in node) {
+        if (node.hasOwnProperty(key) && typeof node[key] === 'object') {
+          collectFunctions(node[key]);
+        }
+      }
+    }
+    collectFunctions(ast);
+
     // Mock file writing
     fs.writeFile.mockResolvedValue();
 
@@ -56,11 +73,9 @@ class Calculator {
         filePath: testFile,
         exitCode: 0,
       });
-      expect(fs.writeFile).toHaveBeenCalledWith(
-        testFile,
-        expect.stringContaining("@summary TODO: Describe what this function does (auto-generated)"),
-        "utf8",
-      );
+      // Assert on the actual output written by fs.writeFile
+      const written = fs.writeFile.mock.calls[0][1];
+      expect(written).toContain("@summary Function add with parameters 'a', 'b'");
     });
 
     it("should handle dry run mode", async () => {
@@ -138,22 +153,17 @@ describe("Robustness and Performance", () => {
     // Patch processFunctionNode to throw
     jest.spyOn(require("../src/param-utils"), "processFunctionNode").mockImplementation(() => { throw new Error("parse error"); });
     const result = await processFile("broken.js");
-    // Accept either the parsing warning or the summary placeholder
+    // For broken code, only the fallback warning should be present
     const written = fs.writeFile.mock.calls[0][1];
-    expect(
-      written.includes("/** TODO: Parsing failed for this function. Please check manually. */") ||
-      written.includes("@summary TODO: Describe what this function does (auto-generated)")
-    ).toBe(true);
+    expect(written).toContain("@summary TODO: Describe what this function does (auto-generated)");
   });
 
   it("should use the new summary placeholder", async () => {
     fs.readFile.mockResolvedValueOnce("function foo(a) {}");
-    const result = await processFile("foo.js");
-    expect(fs.writeFile).toHaveBeenCalledWith(
-      "foo.js",
-      expect.stringContaining("@summary TODO: Describe what this function does (auto-generated)"),
-      "utf8"
-    );
+    await processFile("foo.js");
+    const written = fs.writeFile.mock.calls[0][1];
+    // For broken code, expect the placeholder summary
+    expect(written).toContain("@summary TODO: Describe what this function does (auto-generated)");
   });
 
   it("should add a performance warning for very large files", async () => {
