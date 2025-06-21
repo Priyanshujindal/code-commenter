@@ -17,5 +17,13 @@
     "eqeqeq": ["error", "always"],
     "no-multiple-empty-lines": ["error", { "max": 1, "maxEOF": 0 }],
     "no-trailing-spaces": "error"
-  }
+  },
+  "overrides": [
+    {
+      "files": ["test/**/*.js", "**/*.test.js"],
+      "rules": {
+        "no-console": "off"
+      }
+    }
+  ]
 }
