@@ -73,48 +73,70 @@ function extractParams(
   }
 
   // Helper function to extract properties from an object pattern
-  const extractObjectPatternProperties = (pattern) => {
+  const extractObjectPatternProperties = (pattern, parentName = "") => {
     if (!pattern || pattern.type !== "ObjectPattern") return [];
-    return pattern.properties
-      .map((prop) => {
-        if (prop.type === "RestElement") {
-          return {
-            name: prop.argument.name,
-            type: isTypeScript ? getTSType(prop.argument) : "any",
-            isRest: true,
-            hasDefault: false,
-            optional: isTypeScript ? isOptional(prop.argument) : false,
-          };
+    let results = [];
+    for (const prop of pattern.properties) {
+      if (prop.type === "RestElement") {
+        results.push({
+          name: prop.argument.name,
+          type: "Object",
+          isRest: true,
+          hasDefault: false,
+        });
+        continue;
+      }
+
+      const currentName = parentName
+        ? `${parentName}.${prop.key.name}`
+        : prop.key.name;
+
+      if (prop.value && prop.value.type === "ObjectPattern") {
+        results = results.concat(
+          extractObjectPatternProperties(prop.value, currentName),
+        );
+      } else if (prop.value && prop.value.type === "AssignmentPattern") {
+        let type = isTypeScript ? getTSType(prop.value.left) : "any";
+        let defaultValue = "…";
+
+        if (prop.value.right.type === "Literal") {
+          type = typeof prop.value.right.value;
+          defaultValue = JSON.stringify(prop.value.right.value);
+        } else if (prop.value.right.type === "ObjectExpression") {
+          type = "Object";
+          defaultValue = "{}";
+        } else if (prop.value.right.type === "ArrayExpression") {
+          type = "Array";
+          defaultValue = "[]";
         }
-        if (prop.value && prop.value.type === "AssignmentPattern") {
-          let type = isTypeScript ? getTSType(prop.value.left) : "any";
-          let defaultValue = undefined;
-          if (prop.value.right.type === "Literal") {
-            type = typeof prop.value.right.value;
-            defaultValue = JSON.stringify(prop.value.right.value);
-          } else if (prop.value.right.type === "ObjectExpression") {
-            type = "Object";
-            defaultValue = "{}";
-          } else if (prop.value.right.type === "ArrayExpression") {
-            type = "Array";
-            defaultValue = "[]";
-          }
-          return {
-            name: prop.key.name,
+
+        if (prop.value.left.type === "ObjectPattern") {
+          results.push({
+            name: currentName,
+            type: "Object",
+            hasDefault: true,
+            defaultValue,
+          });
+          results = results.concat(
+            extractObjectPatternProperties(prop.value.left, currentName),
+          );
+        } else {
+          results.push({
+            name: currentName,
             type,
             hasDefault: true,
             defaultValue,
-            optional: isTypeScript ? isOptional(prop.value.left) : false,
-          };
+          });
         }
-        return {
-          name: prop.key?.name || prop.value?.name,
+      } else {
+        results.push({
+          name: currentName,
           type: isTypeScript ? getTSType(prop.value || prop.key) : "any",
           hasDefault: false,
-          optional: isTypeScript ? isOptional(prop.value || prop.key) : false,
-        };
-      })
-      .filter(Boolean);
+        });
+      }
+    }
+    return results;
   };
 
   for (const param of node.params) {
@@ -149,12 +171,13 @@ function extractParams(
           const typeAnn = param.left.typeAnnotation
             ? getTSType(param.left.typeAnnotation)
             : "Object";
+          const baseName = `param${destructuredCount++}`;
           paramInfo = {
-            name: `param${destructuredCount++}`,
+            name: baseName,
             type: typeAnn,
             isRest: false,
             hasDefault: false,
-            properties: extractObjectPatternProperties(param.left),
+            properties: extractObjectPatternProperties(param.left, baseName),
           };
         } else if (param.left.type === "ArrayPattern") {
           const typeAnn = param.left.typeAnnotation
@@ -181,12 +204,13 @@ function extractParams(
         const typeAnn = param.typeAnnotation
           ? getTSType(param.typeAnnotation)
           : "Object";
+        const baseName = `param${destructuredCount++}`;
         paramInfo = {
-          name: `param${destructuredCount++}`,
+          name: baseName,
           type: typeAnn,
           isRest: false,
           hasDefault: false,
-          properties: extractObjectPatternProperties(param),
+          properties: extractObjectPatternProperties(param, baseName),
         };
         break;
       }
@@ -231,13 +255,14 @@ function extractParams(
           const typeAnn = inner.typeAnnotation
             ? getTSType(inner.typeAnnotation)
             : "Object";
+          const baseName = `param${destructuredCount++}`;
           paramInfo = {
-            name: `param${destructuredCount++}`,
+            name: baseName,
             type: typeAnn,
             isRest: false,
             hasDefault: false,
             isParamProperty: true,
-            properties: extractObjectPatternProperties(inner),
+            properties: extractObjectPatternProperties(inner, baseName),
           };
         } else if (inner.type === "ArrayPattern") {
           const typeAnn = inner.typeAnnotation
@@ -308,7 +333,7 @@ function processFunctionNode(node, options = {}) {
           if (prop.isRest) {
             propDocs.push(` * @param {...*} ${prop.name} - Rest property`);
           } else {
-            let propDoc = ` * @param {${prop.type || "any"}} ${param.name || "param"}.${prop.name}`;
+            let propDoc = ` * @param {${prop.type || "any"}} ${prop.name}`;
             if (prop.optional) propDoc += " (optional)";
             if (
               prop.hasDefault &&
