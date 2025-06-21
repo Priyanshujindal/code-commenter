@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const walk = require("acorn-walk");
 const { parse } = require("acorn-loose");
-const { processFunctionNode } = require("./param-utils");
+const { processFunctionNode, extractParams } = require("./param-utils");
 const { ensureDirectoryExists } = require("./file-utils");
 const glob = require("glob").glob;
 const { parse: tsParse } = require("@typescript-eslint/typescript-estree");
@@ -153,7 +153,13 @@ async function processFile(filePath, options = {}) {
     let commentsToInsert = [];
     if (isTypeScript) {
       try {
-        ast = tsParse(code, { loc: true, range: true });
+        ast = tsParse(code, {
+          loc: true,
+          range: true,
+          jsx: true, // Enable JSX parsing for TSX files
+          errorOnUnknownASTType: false, // Be tolerant to unknown types
+          useJSXTextNode: true,
+        });
       } catch (err) {
         const location = { start: { line: err.lineNumber, column: err.column } };
         const frame = codeFrameColumns(code, location, {
@@ -166,7 +172,8 @@ async function processFile(filePath, options = {}) {
         console.error(msg);
         if (options.exitOnError)
           return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
-        return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+        // Instead of failing, skip this file and continue
+        return { error: msg, filePath, skipped: true, exitCode: 0, stderr: msg };
       }
       // debug("TypeScript AST parsed successfully");
       visitTSNode(ast, null, code, options, commentsToInsert);
@@ -176,6 +183,10 @@ async function processFile(filePath, options = {}) {
           ecmaVersion: "latest",
           sourceType: "module",
           locations: true,
+          allowAwaitOutsideFunction: true,
+          allowImportExportEverywhere: true,
+          allowReturnOutsideFunction: true,
+          allowSuperOutsideMethod: true,
         });
       } catch (err) {
         const { loc } = err;
@@ -189,7 +200,8 @@ async function processFile(filePath, options = {}) {
         console.error(msg);
         if (options.exitOnError)
           return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
-        return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+        // Instead of failing, skip this file and continue
+        return { error: msg, filePath, skipped: true, exitCode: 0, stderr: msg };
       }
       // debug("AST parsed successfully");
       setParents(ast, null);
@@ -442,20 +454,56 @@ function generateFunctionComment(node, code, functionName = "", options = {}) {
   if (process.env.DEBUG) {
     // console.error('DEBUG generateFunctionComment options.noTodo:', options.noTodo);
   }
+  // Heuristic summary generation
+  function makeSummary(name, params, returnType) {
+    if (!name || name === 'anonymous' || name === 'Function') return null;
+    let summary = '';
+    // Try to infer action from function name
+    if (/^(get|set|is|has|can|should|fetch|load|find|create|update|delete|remove|add|calculate|compute|build|render|parse|format|convert|to)[A-Z_]/.test(name)) {
+      // Split camelCase or snake_case
+      const readable = name.replace(/([a-z])([A-Z])/g, '$1 $2').replace(/_/g, ' ').toLowerCase();
+      summary = readable.charAt(0).toUpperCase() + readable.slice(1);
+    } else {
+      summary = `Function ${name}`;
+    }
+    if (params && params.length > 0) {
+      summary += ' with parameter' + (params.length > 1 ? 's' : '') +
+        ' ' + params.map(p => `'${p.name}'`).join(', ');
+    }
+    if (returnType && returnType !== 'void') {
+      summary += `. Returns ${returnType}.`;
+    }
+    return summary;
+  }
   try {
     const paramDocs = processFunctionNode(node, options);
     let comment = "/**\n";
+    let summaryLine = null;
     if (options.noTodo) {
-      comment += ` * @summary ${functionName || "Function"}\n`;
+      summaryLine = functionName || "Function";
+    } else if (options.smartSummary) {
+      // Try to generate a smart summary using extractParams
+      const isTypeScript = options.isTypeScript || false;
+      const paramsExtracted = extractParams(node, isTypeScript);
+      const paramNames = paramsExtracted.map(p => p.name);
+      const isValidIdentifier = name => !!name && name !== 'undefined' && !/^param\d+$/.test(name) && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
+      const hasInvalid = paramNames.length === 0 || paramNames.some(p => !isValidIdentifier(p));
+      const returnType = (node.returnType && node.returnType.typeAnnotation && node.returnType.typeAnnotation.type) ? node.returnType.typeAnnotation.type : null;
+      if (hasInvalid) {
+        summaryLine = `TODO: Describe what this function does (auto-generated)`;
+      } else {
+        summaryLine = makeSummary(functionName, paramNames, returnType) || `TODO: Describe what this function does (auto-generated)`;
+      }
     } else {
-      comment += ` * @summary TODO: Describe what this function does (auto-generated)\n`;
+      summaryLine = `TODO: Describe what this function does (auto-generated)`;
     }
+    comment += ` * @summary ${summaryLine}\n`;
     if (paramDocs) {
       if (!options.noTodo) {
         comment += ` * \n`;
       }
       comment += ` * ${paramDocs}\n`;
-      }
+    }
     comment += " */";
     return comment;
   } catch (error) {

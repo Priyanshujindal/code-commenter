@@ -27,7 +27,23 @@ function getTSType(tsNode, defaultType = "any") {
             const elementType = getTSType(tsNode.elementType, 'any');
             return `Array<${elementType}>`;
         }
-        case 'TSTypeReference': return tsNode.typeName?.name || defaultType;
+        case 'TSTypeReference':
+            if (tsNode.typeName && tsNode.typeName.name) {
+                return tsNode.typeName.name;
+            } else if (tsNode.typeName && tsNode.typeName.left && tsNode.typeName.right) {
+                // Handle qualified names (e.g., ns.Type)
+                return tsNode.typeName.left.name + '.' + tsNode.typeName.right.name;
+            }
+            return defaultType;
+        case 'TSUnionType':
+            return tsNode.types.map(t => getTSType(t, defaultType)).join(' | ');
+        case 'TSIntersectionType':
+            return tsNode.types.map(t => getTSType(t, defaultType)).join(' & ');
+        case 'TSLiteralType':
+            if (tsNode.literal && typeof tsNode.literal.value !== 'undefined') {
+                return typeof tsNode.literal.value;
+            }
+            return defaultType;
         case 'ObjectPattern': return 'Object';
         case 'ArrayPattern': return 'Array';
         default: return defaultType;
@@ -152,6 +168,14 @@ function inferTypeFromDefault(identifierNode) {
     if (identifierNode && identifierNode.typeAnnotation) {
         return getTSType(identifierNode.typeAnnotation);
     }
+    if (identifierNode && identifierNode.default) {
+        const val = identifierNode.default;
+        if (typeof val === 'string') return 'string';
+        if (typeof val === 'number') return 'number';
+        if (typeof val === 'boolean') return 'boolean';
+        if (Array.isArray(val)) return 'Array';
+        if (typeof val === 'object') return 'Object';
+    }
     // Fallback to any
     return 'any';
 }
@@ -209,10 +233,6 @@ function generateParamDocs(functionNode, options = {}) {
         // Helper function to collect names and types for alignment
         const collectNamesAndTypes = (param, parentName = "") => {
             const nameStr = parentName ? `${parentName}.${param.name}` : param.name;
-            if (process.env.DEBUG) {
-                // eslint-disable-next-line no-console
-                console.log('[DEBUG collectNamesAndTypes]', { nameStr, type: param.type, parentName });
-            }
             allNames.push(nameStr);
             allTypes.push(param.type);
             if (param.properties) {
@@ -224,26 +244,26 @@ function generateParamDocs(functionNode, options = {}) {
         };
 
         params.forEach(param => collectNamesAndTypes(param));
-        const maxTypeLen = allTypes.reduce((max, t) => Math.max(max, (t || '').length), 0);
-        const maxNameLen = allNames.reduce((max, n) => Math.max(max, (n || '').length), 0);
+        // Improved: ignore undefined/empty names/types for alignment
+        const filteredNames = allNames.filter(Boolean);
+        const filteredTypes = allTypes.filter(Boolean);
+        const maxTypeLen = filteredTypes.reduce((max, t) => Math.max(max, (t || '').length), 0);
+        const maxNameLen = filteredNames.reduce((max, n) => Math.max(max, (n || '').length), 0);
 
-        const pad = (str, len) => str + ' '.repeat(len - str.length);
+        const pad = (str, len) => str + ' '.repeat(Math.max(0, len - str.length));
 
         // Helper function to generate documentation for a parameter
         const docForParam = (param, parentName = "", kind = "param", isArrayElement = false) => {
             const typeStr = param.type;
             let nameStr;
             if (isArrayElement && param.name) {
-                // For array elements, use just the identifier name
                 nameStr = param.name;
             } else if (kind === "property" && parentName && param.name) {
-                // For nested object properties, use the full path
                 nameStr = `${parentName}.${param.name}`.replace(/^param\d+\./, '');
             } else {
                 nameStr = parentName ? `${parentName}.${param.name}` : param.name;
                 nameStr = nameStr.replace(/^param\d+\./, '');
             }
-            // Skip doc line for synthetic paramN names
             if (/^param\d+$/.test(nameStr)) {
                 if (param.properties) {
                     param.properties.forEach(p => docForParam(p, nameStr, "property"));
@@ -253,22 +273,18 @@ function generateParamDocs(functionNode, options = {}) {
                 }
                 return;
             }
-            if (process.env.DEBUG) {
-                // eslint-disable-next-line no-console
-                console.log('[DEBUG docForParam]', { nameStr, typeStr, parentName, kind, isArrayElement });
-            }
             let doc;
             if (isArrayElement && param.isRest && (typeStr === 'Array' || typeStr === 'Array<any>')) {
                 doc = `@param {Array} ...${param.name.replace('...', '')} - Rest parameter`;
             } else if (isArrayElement) {
                 if (param.hasDefault) {
-                    doc = `@param {${typeStr}} ${nameStr} - Default value: \`${param.defaultValue}\`. - Parameter '${param.name}'`;
+                    doc = `@param {${typeStr}} ${pad(nameStr, maxNameLen)} - Default value: \`${param.defaultValue}\`. - Parameter '${param.name}'`;
                 } else {
-                    doc = `@param {${typeStr}} ${nameStr} - Parameter '${param.name}'`;
+                    doc = `@param {${typeStr}} ${pad(nameStr, maxNameLen)} - Parameter '${param.name}'`;
                 }
             } else if (param.hasDefault) {
                 if (kind === "property" && !isArrayElement) {
-                    doc = `@param {${typeStr}} ${nameStr} - Default value: \`${param.defaultValue}\`. - Property '${param.name}'`;
+                    doc = `@param {${typeStr}} ${pad(nameStr, maxNameLen)} - Default value: \`${param.defaultValue}\`. - Property '${param.name}'`;
                 } else {
                     doc = `@param {${pad(typeStr, maxTypeLen)}} [${pad(nameStr, maxNameLen)}=${param.defaultValue}] - Parameter '${nameStr}'`;
                 }
@@ -276,7 +292,7 @@ function generateParamDocs(functionNode, options = {}) {
                 doc = `@param {...${typeStr.replace('Array<', '').replace('>', '')}} ${nameStr.replace("...", "")} - Rest parameter`;
             } else {
                 if (kind === "property" && !isArrayElement) {
-                    doc = `@param {${typeStr}} ${nameStr} - Property '${param.name}'`;
+                    doc = `@param {${typeStr}} ${pad(nameStr, maxNameLen)} - Property '${param.name}'`;
                 } else {
                     doc = `@param {${pad(typeStr, maxTypeLen)}} ${pad(nameStr, maxNameLen)} - Parameter '${nameStr}'`;
                 }
@@ -323,14 +339,8 @@ function generateParamDocs(functionNode, options = {}) {
             paramDocs.push(`@example ${functionName}(${exampleParams})`);
         }
 
-        // Before returning, log paramDocs
-        if (process.env.DEBUG) {
-            // eslint-disable-next-line no-console
-            console.log('DEBUG FINAL paramDocs:', JSON.stringify(paramDocs, null, 2));
-        }
         return paramDocs.join("\n * ");
     } catch (error) {
-        // console.error("Error generating parameter docs:", error);
         return "";
     }
 }
