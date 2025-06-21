@@ -17,6 +17,7 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
   - Rest parameters and TypeScript parameter properties.
   - Functions in object literals.
 - Smart type inference for parameters and return values (infers from default values).
+- Generates `@example` tags with placeholder values.
 - Customizable comment templates via `code-commenter.config.json`.
 - Skips already-documented functions.
 - Robust error handling and a user-friendly CLI.
@@ -112,6 +113,7 @@ function processData({ data: { id, values: [val1, val2] }, options: { enabled } 
  * @param {Object} param1.options - Property 'options'
  * @param {any} param1.options.enabled - Property 'enabled'
  * @returns {any} - The return value
+ * @example processData({ data: { id: null, values: [] }, options: { enabled: null } })
  */
 ```
 
@@ -140,12 +142,14 @@ const utils = {
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
+ * @example add(null, null)
  */
 /**
  * subtract
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
+ * @example subtract(null, null)
  */
 ```
 
@@ -179,6 +183,7 @@ The generated JSDoc will look like:
  * @param {BarType} param1 - Destructured parameter
  * @param {...number[]} args
  * @returns {any} - The return value
+ * @example Example(null, null, null)
  */
 ```
 
