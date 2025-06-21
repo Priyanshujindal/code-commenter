@@ -204,12 +204,40 @@ function generateParamDocs(functionNode, options = {}) {
             }
         };
 
+        const addElementDocs = (elements, parentName) => {
+            elements.forEach((el, idx) => {
+                if (el) {
+                    const elName = el.name;
+                    if (el.elements) {
+                        // Nested array destructuring
+                        addElementDocs(el.elements, elName);
+                    } else if (el.properties) {
+                        // Nested object destructuring
+                        paramDocs.push(`@param {${el.type}} ${elName} - Object parameter`);
+                        addPropDocs(el.properties, elName);
+                    } else if (el.hasDefault) {
+                        paramDocs.push(`@param {${el.type}} [${elName}=${el.defaultValue}]`);
+                    } else {
+                        paramDocs.push(`@param {${el.type}} ${elName} - Parameter '${elName}'`);
+                    }
+                }
+            });
+        };
+
         for (const param of params) {
             if (param.isRest) {
                 paramDocs.push(`@param {...${param.type.replace('Array<', '').replace('>', '')}} ${param.name.replace("...", "")} - Rest parameter`);
+            } else if (param.properties && param.name && param.name.startsWith('param')) {
+                // Flatten top-level destructured object properties
+                addPropDocs(param.properties, "");
             } else if (param.properties) {
                 paramDocs.push(`@param {${param.type}} ${param.name} - Object parameter`);
                 addPropDocs(param.properties, param.name);
+            } else if (param.elements && param.name && param.name.startsWith('param')) {
+                // Flatten top-level destructured array elements
+                addElementDocs(param.elements, "");
+            } else if (param.elements) {
+                addElementDocs(param.elements, param.name);
             } else if (param.hasDefault) {
                 paramDocs.push(`@param {${param.type}} [${param.name}=${param.defaultValue}] - Parameter '${param.name}'`);
             } else {

@@ -1,11 +1,10 @@
-const fs = require("fs");
+const fs = require("fs/promises");
 const path = require("path");
 const walk = require("acorn-walk");
 const { parse } = require("acorn-loose");
 const { processFunctionNode } = require("./param-utils");
 const { ensureDirectoryExists } = require("./file-utils");
 const glob = require("glob").glob;
-const fsSync = require("fs");
 const { parse: tsParse } = require("@typescript-eslint/typescript-estree");
 const { codeFrameColumns } = require("@babel/code-frame");
 
@@ -131,12 +130,16 @@ async function processFile(filePath, options = {}) {
     } catch (err) {
       const msg = `Error: File not found: ${filePath}`;
       console.error(msg);
-      if (options.exitOnError) return { error: msg, filePath, skipped: false };
-      return { error: msg, filePath, skipped: false };
+      if (options.exitOnError) return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+      return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
     }
     debug(`File size: ${code.length} characters`);
     if (code.trim() === "") {
-      // console.log("(no changes needed)");
+      if (!options.dryRun && options.output) {
+        console.log("(no changes needed)");
+      } else if (options.dryRun) {
+        console.log("(no changes needed)");
+      }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
     }
 
@@ -156,8 +159,8 @@ async function processFile(filePath, options = {}) {
         const msg = `Error: parsing failed for file: ${filePath}\n${frame}`;
         console.error(msg);
         if (options.exitOnError)
-          return { error: msg, filePath, skipped: false, exitCode: 1 };
-        return { error: msg, filePath, skipped: false, exitCode: 1 };
+          return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+        return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
       }
       debug("TypeScript AST parsed successfully");
       visitTSNode(ast, null, code, options, commentsToInsert);
@@ -177,8 +180,8 @@ async function processFile(filePath, options = {}) {
         const msg = `Error: parsing failed for file: ${filePath}\n${frame}`;
         console.error(msg);
         if (options.exitOnError)
-          return { error: msg, filePath, skipped: false, exitCode: 1 };
-        return { error: msg, filePath, skipped: false, exitCode: 1 };
+          return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+        return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
       }
       debug("AST parsed successfully");
       setParents(ast, null);
@@ -297,9 +300,9 @@ async function processFile(filePath, options = {}) {
     // If no comments to add, return early
     if (commentsToInsert.length === 0) {
       if (!options.dryRun && options.output) {
-        // console.log("(no changes needed)");
+        console.log("(no changes needed)");
       } else if (options.dryRun) {
-        // console.log("(no changes needed)");
+        console.log("(no changes needed)");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
     }
@@ -332,13 +335,14 @@ async function processFile(filePath, options = {}) {
       await fs.writeFile(outputPath, newCode, "utf8");
     } else {
       if (!process.env.BENCHMARK) {
-        // console.log(`(dry run) ${filePath}`);
-        // console.log(newCode);
+        console.log(`(dry run) ${filePath}`);
+        console.log(newCode);
       }
       return {
         commentsAdded: commentsToInsert.length,
         skipped: false,
         filePath: outputPath,
+        exitCode: 0,
       };
     }
 
@@ -346,6 +350,7 @@ async function processFile(filePath, options = {}) {
       commentsAdded: commentsToInsert.length,
       skipped: false,
       filePath: outputPath,
+      exitCode: 0,
     };
   } catch (error) {
     if (options.continueOnError) {
@@ -426,11 +431,15 @@ function hasLeadingComment(node, code) {
  * @returns {string|null} Generated comment or null if not needed
  */
 function generateFunctionComment(node, code, functionName = "", options = {}) {
+  if (process.env.DEBUG) {
+    console.error('DEBUG generateFunctionComment options.noTodo:', options.noTodo);
+  }
   try {
     const paramDocs = processFunctionNode(node, options);
-
     let comment = "/**\n";
-    if (!options.noTodo) {
+    if (options.noTodo) {
+      comment += ` * @summary ${functionName || "Function"}\n`;
+    } else {
       comment += ` * @summary TODO: Document what ${functionName || "Function"} does\n`;
     }
     if (paramDocs) {
@@ -440,7 +449,6 @@ function generateFunctionComment(node, code, functionName = "", options = {}) {
       comment += ` * ${paramDocs}\n`;
     }
     comment += " */";
-
     return comment;
   } catch (error) {
     console.error(
@@ -466,9 +474,12 @@ async function processFiles(patterns, options = {}) {
         process.cwd(),
         "code-commenter.config.json",
       );
-      if (fsSync.existsSync(configPath)) {
+      try {
+        await fs.access(configPath);
         const configContent = await fs.readFile(configPath, "utf8");
         config = JSON.parse(configContent);
+      } catch (e) {
+        // Config file does not exist or cannot be read
       }
     } catch (e) {
       console.error("Error loading code-commenter.config.json:", e.message);
@@ -486,12 +497,14 @@ async function processFiles(patterns, options = {}) {
     let processed = 0;
     let skipped = 0;
     let errors = 0;
+    let errorMessages = [];
     for (const file of files) {
       try {
         debug(`Processing file: ${file}`);
         const result = await processFile(file, mergedOptions);
         if (result && result.error && result.exitCode === 1) {
           errors++;
+          if (result.stderr) errorMessages.push(result.stderr);
           debug(`Error in file: ${file}`);
         } else if (result && result.skipped) {
           skipped++;
@@ -506,6 +519,7 @@ async function processFiles(patterns, options = {}) {
         } else {
           errors++;
           const errorMsg = `Error processing ${file}: ${error && error.message}`;
+          errorMessages.push(errorMsg);
           console.error(errorMsg);
           debug("Error details:", error && error.stack);
         }
@@ -515,7 +529,7 @@ async function processFiles(patterns, options = {}) {
     debug(
       `Processing complete. Processed: ${processed}, Skipped: ${skipped}, Errors: ${errors}`,
     );
-    return { processed, skipped, errors, exitCode };
+    return { processed, skipped, errors, exitCode, stderr: errorMessages.length ? errorMessages.join("\n") : undefined };
   } catch (error) {
     console.error("Error in processFiles:", error.message);
     debug("processFiles error details:", error.stack);

@@ -29,7 +29,7 @@ class Calculator {
     // Reset all mocks
     jest.clearAllMocks();
 
-    // Mock file reading
+    // Mock file reading for any file, as the content is the same for all tests
     fs.readFile.mockResolvedValue(testCode);
 
     // Mock file writing
@@ -49,18 +49,13 @@ class Calculator {
 
   describe("processFile", () => {
     it("should process a file and add comments", async () => {
-      console.log(
-        "DEBUG: testCode used for add comment test:",
-        JSON.stringify(testCode),
-      );
       const result = await processFile(testFile);
-
       expect(result).toEqual({
         commentsAdded: expect.any(Number),
         skipped: false,
         filePath: testFile,
+        exitCode: 0,
       });
-
       expect(fs.writeFile).toHaveBeenCalledWith(
         testFile,
         expect.stringContaining("@summary TODO: Document what add does"),
@@ -70,26 +65,25 @@ class Calculator {
 
     it("should handle dry run mode", async () => {
       const result = await processFile(testFile, { dryRun: true });
-
       expect(result).toEqual({
         commentsAdded: expect.any(Number),
         skipped: false,
         filePath: testFile,
+        exitCode: 0,
       });
-
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
 
     it("should handle output directory", async () => {
       const outputDir = "output";
+      const outputFile = path.join(outputDir, "test.js");
       const result = await processFile(testFile, { output: outputDir });
-
       expect(result).toEqual({
         commentsAdded: expect.any(Number),
         skipped: false,
-        filePath: path.join(outputDir, "test.js"),
+        filePath: outputFile,
+        exitCode: 0,
       });
-
       expect(fs.mkdir).toHaveBeenCalledWith(outputDir, { recursive: true });
     });
 
@@ -103,21 +97,15 @@ class Calculator {
 function add(a, b) {
   return a + b;
 }`;
-      console.log(
-        "DEBUG: commentedCode used for skip test:",
-        JSON.stringify(commentedCode),
-      );
       fs.readFile.mockResolvedValueOnce(commentedCode);
-
       const result = await processFile(testFile);
-
       expect(result).toEqual(
         expect.objectContaining({
           commentsAdded: 0,
           skipped: true,
+          exitCode: 0,
         }),
       );
-
       expect(fs.writeFile).not.toHaveBeenCalled();
     });
   });

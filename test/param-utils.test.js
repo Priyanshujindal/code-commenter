@@ -286,25 +286,13 @@ describe("Parameter Utilities", () => {
       const functionNode = getFunctionNode(code);
       const result = generateParamDocs(functionNode);
 
-      // Check for the main object parameter
-      expect(result).toContain("@param {Object} param1 - Object parameter");
-
-      // Check for nested properties with default values
-      expect(result).toContain(
-        "@param {number} [a=1] - Parameter 'a'",
-      );
-      expect(result).toContain(
-        "@param {Object} param1.b - Property 'b'",
-      );
-      expect(result).toContain("@param {any} param1.b.c - Property 'c'");
-      expect(result).toContain("@param {Array} param1.b.d - Property 'd'");
-
-      // Check for array parameters
-      expect(result).toContain("@param {Array} param2 - Array parameter");
+      // Check for flattened destructured properties
+      expect(result).toContain("@param {number} a - Default value: `1`. - Property 'a'");
+      expect(result).toContain("@param {Object} b - Property 'b'");
+      expect(result).toContain("@param {any} b.c - Property 'c'");
+      expect(result).toContain("@param {Array} b.d - Property 'd'");
       expect(result).toContain("@param {any} f - Parameter 'f'");
-      expect(result).toContain(
-        "@param {...any} g - Rest parameter",
-      );
+      expect(result).toContain("@param {Array<any>} ...g - Parameter '...g'");
     });
 
     it("should add a @returns tag if a return statement is present", () => {

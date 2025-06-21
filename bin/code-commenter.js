@@ -5,8 +5,9 @@
 const { program } = require("commander");
 const { processFiles } = require("../src/processor");
 const path = require("path");
-const fs = require("fs");
+const fs = require("fs/promises");
 const { version } = require("../package.json");
+const { execSync } = require("child_process");
 
 program
   .name("code-commenter")
@@ -35,9 +36,12 @@ program
       let config = {};
       if (options.config) {
         const configPath = path.resolve(process.cwd(), options.config);
-        if (fs.existsSync(configPath)) {
-          const configContent = fs.readFileSync(configPath, "utf8");
+        try {
+          await fs.access(configPath);
+          const configContent = await fs.readFile(configPath, "utf8");
           config = JSON.parse(configContent);
+        } catch (err) {
+          // Config file does not exist or cannot be read
         }
       }
       if (options.debug) {
@@ -46,10 +50,30 @@ program
       const processorOptions = {
         ...config,
         ...options,
+        noTodo: options.todo === false,
       };
+      if (options.debug) {
+        console.error('DEBUG options.noTodo:', options.noTodo);
+        console.error('DEBUG processorOptions.noTodo:', processorOptions.noTodo);
+        console.error('DEBUG processorOptions:', JSON.stringify(processorOptions));
+      }
       const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
       const stats = await processFiles(normalizedFiles, processorOptions);
-      process.exit(0);
+      if (stats.stderr) {
+        const fs = require('fs');
+        const fd = fs.openSync('.code-commenter-error', 'w');
+        fs.writeSync(fd, stats.stderr);
+        fs.fsyncSync(fd);
+        fs.closeSync(fd);
+        process.stderr.write(stats.stderr + '\n');
+        setTimeout(() => process.exit(1), 100);
+        return;
+      }
+      if (stats.exitCode && stats.exitCode !== 0) {
+        process.exitCode = stats.exitCode;
+      }
+      // Only exit at the end
+      process.exit(process.exitCode || 0);
     } catch (error) {
       console.error("Error in processFiles:", error.message);
       process.exit(1);
@@ -79,4 +103,25 @@ try {
     stack: error.stack,
   });
   process.exit(1);
+}
+
+function runCLI(cmd, options) {
+  try {
+    const output = execSync(cmd, {
+      cwd: options.cwd || process.cwd(),
+      encoding: "utf-8",
+      stdio: ["pipe", "pipe", "pipe"],
+    });
+    return {
+      status: 0,
+      stdout: output,
+      stderr: "",
+    };
+  } catch (error) {
+    return {
+      status: error.status !== undefined ? error.status : 1,
+      stdout: error.stdout || "",
+      stderr: error.stderr || error.message,
+    };
+  }
 }
