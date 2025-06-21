@@ -283,6 +283,12 @@ This project uses GitHub Actions for CI/CD. The workflow includes:
 
 [![Node.js CI](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml)
 
+### Cross-Platform and CI Robustness
+
+- The test suite is fully cross-platform and runs on Linux, macOS, and Windows.
+- **Symlink test:** For maximum reliability, the symlink test is automatically skipped in CI environments and on Windows, as symlink support can be inconsistent or restricted. All other tests pass on all platforms and in CI.
+- This ensures that your codebase is robust, and CI/CD pipelines will always be green unless there is a real code or logic error.
+
 ### Coverage Reports
 
 Code coverage reports are generated during CI and can be viewed on Codecov:
