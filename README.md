@@ -69,12 +69,17 @@ code-commenter <file/glob> [options]
 | ----------- | ------------------------------------------------------ |
 | `--dry-run` | Show what would change, but don't write files          |
 | `--output`  | Directory to write output files to (default: in-place) |
+| `--config`  | Path to a custom JSON configuration file                |
 | `--debug`   | Show debug output                                      |
 | `--help`    | Show CLI help                                          |
 
 ## Advanced Features
 
 code-commenter can handle a variety of advanced JavaScript and TypeScript patterns.
+
+### Robust Error Handling
+
+When the tool encounters a syntax error in a file, it will print a user-friendly code frame that pinpoints the exact location of the error, making it easy to identify and fix.
 
 ### Deeply Destructured Parameters
 
@@ -167,9 +172,16 @@ The generated JSDoc will look like:
 
 code-commenter will always use the best available type information for parameters, including generics, unions, and intersections where possible.
 
-## Customization
+## Configuration
 
-You can create a `code-commenter.config.json` file in your project root to customize the generated comments. Example:
+You can configure `code-commenter` in two ways:
+
+1.  **`code-commenter.config.json`**: Create this file in your project root. The CLI will automatically load and use it.
+2.  **`--config` option**: Specify a path to a custom JSON configuration file.
+
+The configuration file allows you to customize the generated comments.
+
+**Example `code-commenter.config.json`:**
 
 ```json
 {
@@ -177,6 +189,8 @@ You can create a `code-commenter.config.json` file in your project root to custo
   "jsdocTemplate": "/**\n * {name}\n{params}\n{returns}\n */"
 }
 ```
+
+Available options are the same as the CLI flags (e.g., `dryRun`, `output`, etc.). CLI options will always override options in the configuration file.
 
 ## Status
 
