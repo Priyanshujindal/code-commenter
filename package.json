@@ -13,10 +13,11 @@
     "test:coverage": "jest --coverage",
     "test:ci": "jest --ci --coverage",
     "lint": "eslint .",
-    "lint:fix": "eslint --fix .",
+    "lint:fix": "eslint . --fix",
     "format": "prettier --write .",
     "prepare": "husky install",
-    "precommit": "lint-staged"
+    "precommit": "lint-staged",
+    "test:e2e": "node test-e2e.js"
   },
   "keywords": [
     "javascript",
@@ -78,6 +79,8 @@
   "devDependencies": {
     "@babel/core": "^7.23.0",
     "@babel/preset-env": "^7.23.0",
+    "cross-env": "^7.0.3",
+    "escodegen": "^2.1.0",
     "eslint": "^8.56.0",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-jest": "^27.9.0",

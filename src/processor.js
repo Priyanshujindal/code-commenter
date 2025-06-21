@@ -190,14 +190,7 @@ async function processFile(filePath, options = {}) {
       debugLog("Walking AST to find functions...");
       walk.simple(ast, {
         FunctionDeclaration(node) {
-          debugLog(
-            "Found FunctionDeclaration:",
-            node.id?.name,
-            "at line",
-            node.loc.start.line,
-          );
-          if (!hasComment(node, code)) {
-            debugLog("No comment found for function:", node.id?.name);
+          if (!hasLeadingComment(node, code)) {
             const comment = generateFunctionComment(
               node,
               code,
@@ -205,21 +198,18 @@ async function processFile(filePath, options = {}) {
               { ...options, isTypeScript },
             );
             if (comment) {
-              debugLog("Inserting comment for function:", node.id?.name);
               commentsToInsert.push({
                 position: node.start,
                 text: formatComment(comment, code, node.loc.start.line),
               });
             }
-          } else {
-            debugLog("Comment already exists for function:", node.id?.name);
           }
         },
         ArrowFunctionExpression(node) {
           if (
             node.parent &&
             node.parent.type === "VariableDeclarator" &&
-            !hasComment(node.parent, code)
+            !hasLeadingComment(node.parent, code)
           ) {
             const comment = generateFunctionComment(
               node,
@@ -238,7 +228,7 @@ async function processFile(filePath, options = {}) {
         MethodDefinition(node) {
           if (
             ["method", "constructor", "get", "set"].includes(node.kind) &&
-            !hasComment(node, code)
+            !hasLeadingComment(node, code)
           ) {
             let comment;
             if (node.kind === "get") {
@@ -462,7 +452,7 @@ function generateFunctionComment(node, code, functionName = "", options = {}) {
       } else {
         return (
           todoLine +
-          `/**\n * ${functionName || "Function"}\n${paramDocs.split("\n").join("\n")}`
+          `/**\n * ${functionName || "Function"}\n * ${paramDocs.split("\n").join("\n * ")}\n */`
         );
       }
     } else if (todoLine) {

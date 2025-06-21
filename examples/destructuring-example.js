@@ -13,6 +13,7 @@
  * @param {...*} rest - Rest property
  * @param {...*} userRest - Rest property
  * @returns {any} Return value
+ */
 function processUserData({
   id,
   profile: {
@@ -26,7 +27,7 @@ function processUserData({
 }
 
 // Another example with nested defaults
-const 
+const
 // TODO: Document what configure does
 /**
  * configure
@@ -34,6 +35,7 @@ const
  * @param {number} param1.options.port=3000 - Property 'param1.options.port'
  * @param {boolean} param1.options.env.production=false - Property 'param1.options.env.production'
  * @returns {any} Return value
+ */
 configure = ({
   options: {
     port = 3000,
@@ -41,4 +43,4 @@ configure = ({
   },
 }) => {
   // function body
-}; 
+};
