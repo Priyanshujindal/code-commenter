@@ -9,11 +9,15 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
 
 ## Features
 
-- **JSDoc Generation**: Automatically adds clean, well-formatted JSDoc comments to JavaScript and TypeScript functions.
+- **Smart JSDoc Generation**: Automatically adds clean, well-formatted JSDoc comments to JavaScript and TypeScript functions.
+- **Smart Summary Lines**: Generates a descriptive `@summary` for each function using its name and parameter names, e.g.:
+  - `@summary Function add with parameters 'a', 'b'`
+  - `@summary Function foo with parameter 'x'`
+  - Falls back to a placeholder only for unparseable or anonymous functions.
+- **@example Tag Support**: Generates `@example` tags with realistic function call examples based on parameter names.
 - **Broad Syntax Support**: Supports function declarations, arrow functions, class methods, getters, and setters.
 - **Smart Tag Generation**:
   - Automatically adds an `@returns` tag if a `return` statement is detected.
-- Generates `@example` tags with placeholder values.
 - **Complex Parameter Handling**:
   - Understands deeply nested and destructured parameters.
   - Correctly documents rest parameters and TypeScript parameter properties.
@@ -108,8 +112,8 @@ function processData({ data: { id, values: [val1, val2] }, options: { enabled } 
 
 ```javascript
 /**
- * @summary TODO: Document what processData does
- * 
+ * @summary Function processData with parameters 'param0'
+ *
  * @param {Object} param0 - Object parameter
  * @param {Object} param0.data - Property 'data'
  * @param {any} param0.data.id - Property 'id'
@@ -142,20 +146,20 @@ const utils = {
 
 ```javascript
 /**
- * @summary TODO: Document what add does
- * 
+ * @summary Function add with parameters 'a', 'b'
+ *
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
- * @example add(null, null)
+ * @example add(a, b)
  */
 /**
- * @summary TODO: Document what subtract does
- * 
+ * @summary Function subtract with parameters 'a', 'b'
+ *
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
- * @example subtract(null, null)
+ * @example subtract(a, b)
  */
 ```
 
@@ -184,13 +188,13 @@ The generated JSDoc will look like:
 
 ```js
 /**
- * @summary TODO: Document what constructor does
- * 
+ * @summary Function Example with parameters 'foo', 'param1', 'args'
+ *
  * @param {string} foo - Parameter 'foo'
  * @param {BarType} param1 - Object parameter
  * @param {...number} args - Rest parameter
  * @returns {any} - The return value
- * @example Example(null, null, null)
+ * @example Example(foo, param1, args)
  */
 ```
 
