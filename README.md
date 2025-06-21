@@ -304,4 +304,11 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## Author
+
+- Priyanshu Jindal  
+  [LinkedIn](https://www.linkedin.com/in/priyanshu-jindal-1b6b8b1b2/)
+
+---
+
 Made with ❤️ by Priyanshujindal
