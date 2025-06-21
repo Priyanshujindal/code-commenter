@@ -1,10 +1,9 @@
-const fs = require("fs/promises");
+const fs = require("fs");
 const path = require("path");
-const { parse } = require("acorn");
 const walk = require("acorn-walk");
-const { generateParamDocs, processFunctionNode } = require("./param-utils");
-const { fileExists, ensureDirectoryExists } = require("./file-utils");
-const util = require("util");
+const { parse } = require("acorn-loose");
+const { processFunctionNode } = require("./param-utils");
+const { ensureDirectoryExists } = require("./file-utils");
 const glob = require("glob").glob;
 const fsSync = require("fs");
 const { parse: tsParse } = require("@typescript-eslint/typescript-estree");

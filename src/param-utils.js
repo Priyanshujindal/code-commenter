@@ -224,7 +224,6 @@ function generateParamDocs(functionNode, options = {}) {
             }
             paramDocs.push(`@returns {${returnType}} - The return value`);
         }
-        
         const functionName = functionNode.id ? functionNode.id.name : 'anonymous';
         if (params.length > 0 && options.example) {
             const exampleParams = params.map(p => {
@@ -249,7 +248,7 @@ function generateParamDocs(functionNode, options = {}) {
 
         return paramDocs.join("\n * ");
     } catch (error) {
-        console.error("Error generating parameter docs:", error);
+        // console.error("Error generating parameter docs:", error);
         return "";
     }
 }
@@ -279,6 +278,19 @@ function getReturnType(functionNode, isTypeScript) {
     }
 
     return null;
+}
+
+function parseCode(code) {
+    return parse(code, { ecmaVersion: "latest", sourceType: "module" });
+}
+
+function getFunctionNode(code) {
+    const ast = parseCode(code);
+    const functionNode = findFunctionNode(ast);
+    if (!functionNode) {
+        // console.log("Function node not found for code:", code);
+    }
+    return functionNode;
 }
 
 module.exports = {
