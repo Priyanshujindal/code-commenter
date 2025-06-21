@@ -43,8 +43,5 @@ jobs:
       env:
         CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         
-    - name: Build package
-      run: npm run build
-      
     - name: Verify package can be packed
       run: npm pack --dry-run
