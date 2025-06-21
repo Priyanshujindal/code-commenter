@@ -13,7 +13,7 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
 - **Broad Syntax Support**: Supports function declarations, arrow functions, class methods, getters, and setters.
 - **Smart Tag Generation**:
   - Automatically adds an `@returns` tag if a `return` statement is detected.
-  - Generates `@example` tags with placeholder values.
+- Generates `@example` tags with placeholder values.
 - **Complex Parameter Handling**:
   - Understands deeply nested and destructured parameters.
   - Correctly documents rest parameters and TypeScript parameter properties.
@@ -21,7 +21,7 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
 - **Improved Type Inference**: Infers parameter and return types from default values and TypeScript type annotations.
 - **Customizable**:
   - Comment templates can be customized via `code-commenter.config.json`.
-  - Skips already-documented functions.
+- Skips already-documented functions.
 - **Developer-Friendly**:
   - Robust error handling with user-friendly output.
   - Standard `--version` and `--help` flags.

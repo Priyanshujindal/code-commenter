@@ -3,7 +3,6 @@
  * @module param-utils
  */
 
-const { parse } = require("acorn");
 const { generate } = require("escodegen");
 
 function getPropertyName(property) {
@@ -29,11 +28,13 @@ function getTSType(tsNode, defaultType = "any") {
             return `Array<${elementType}>`;
         }
         case 'TSTypeReference': return tsNode.typeName?.name || defaultType;
+        case 'ObjectPattern': return 'Object';
+        case 'ArrayPattern': return 'Array';
         default: return defaultType;
     }
 }
 
-function extractObjectPatternProperties(properties, isTypeScript, parentName) {
+function extractObjectPatternProperties(properties, isTypeScript, _parentName) {
     const extracted = [];
     if (!properties) return extracted;
     for (const prop of properties) {
@@ -104,7 +105,7 @@ function extractParam(p, isTypeScript, paramIndex) {
     let paramInfo = null;
     switch (p.type) {
         case "Identifier":
-            paramInfo = { name: p.name, type: isTypeScript ? getTSType(p) : "any", isRest: false, hasDefault: false, optional: false, isParamProperty: false };
+            paramInfo = { name: p.name, type: isTypeScript ? getTSType(p) : inferTypeFromDefault(p), isRest: false, hasDefault: false, optional: false, isParamProperty: false };
             break;
         case "AssignmentPattern":
             paramInfo = extractParam(p.left, isTypeScript, paramIndex);
@@ -119,6 +120,10 @@ function extractParam(p, isTypeScript, paramIndex) {
                     } else if (typeof p.right.value === 'boolean') {
                         paramInfo.type = 'boolean';
                     }
+                } else if (p.right.type === 'ArrayExpression') {
+                    paramInfo.type = 'Array';
+                } else if (p.right.type === 'ObjectExpression') {
+                    paramInfo.type = 'Object';
                 }
             }
             break;
@@ -140,6 +145,15 @@ function extractParam(p, isTypeScript, paramIndex) {
             break;
     }
     return paramInfo;
+}
+
+function inferTypeFromDefault(identifierNode) {
+    // Try to infer type from default value if available
+    if (identifierNode && identifierNode.typeAnnotation) {
+        return getTSType(identifierNode.typeAnnotation);
+    }
+    // Fallback to any
+    return 'any';
 }
 
 function extractParams(node, isTypeScript = false) {
@@ -188,62 +202,97 @@ function generateParamDocs(functionNode, options = {}) {
         const params = extractParams(functionNode, isTypeScript);
         const paramDocs = [];
 
-        const addPropDocs = (properties, parentName) => {
-            for (const prop of properties) {
-                const docName = parentName ? `${parentName}.${prop.name}`: prop.name;
-                let propDoc = `@param {${prop.type}} ${docName}`;
-                if (prop.hasDefault && !prop.properties) {
-                    propDoc += ` - Default value: \`${prop.defaultValue}\`.`;
-                }
-                propDoc += ` - Property '${prop.name}'`;
-                paramDocs.push(propDoc);
+        // First pass: collect all names/types for alignment
+        const allNames = [];
+        const allTypes = [];
 
-                if (prop.properties) {
-                    addPropDocs(prop.properties, docName);
-                }
+        // Helper function to collect names and types for alignment
+        const collectNamesAndTypes = (param, parentName = "") => {
+            const nameStr = parentName ? `${parentName}.${param.name}` : param.name;
+            if (process.env.DEBUG) {
+                // eslint-disable-next-line no-console
+                console.log('[DEBUG collectNamesAndTypes]', { nameStr, type: param.type, parentName });
+            }
+            allNames.push(nameStr);
+            allTypes.push(param.type);
+            if (param.properties) {
+                param.properties.forEach(p => collectNamesAndTypes(p, nameStr === undefined ? "" : nameStr));
+            }
+            if (param.elements) {
+                param.elements.forEach(e => { if (e) collectNamesAndTypes(e, nameStr === undefined ? "" : nameStr); });
             }
         };
 
-        const addElementDocs = (elements, parentName) => {
-            elements.forEach((el, idx) => {
-                if (el) {
-                    const elName = el.name;
-                    if (el.elements) {
-                        // Nested array destructuring
-                        addElementDocs(el.elements, elName);
-                    } else if (el.properties) {
-                        // Nested object destructuring
-                        paramDocs.push(`@param {${el.type}} ${elName} - Object parameter`);
-                        addPropDocs(el.properties, elName);
-                    } else if (el.hasDefault) {
-                        paramDocs.push(`@param {${el.type}} [${elName}=${el.defaultValue}]`);
-                    } else {
-                        paramDocs.push(`@param {${el.type}} ${elName} - Parameter '${elName}'`);
-                    }
-                }
-            });
-        };
+        params.forEach(param => collectNamesAndTypes(param));
+        const maxTypeLen = allTypes.reduce((max, t) => Math.max(max, (t || '').length), 0);
+        const maxNameLen = allNames.reduce((max, n) => Math.max(max, (n || '').length), 0);
 
-        for (const param of params) {
-            if (param.isRest) {
-                paramDocs.push(`@param {...${param.type.replace('Array<', '').replace('>', '')}} ${param.name.replace("...", "")} - Rest parameter`);
-            } else if (param.properties && param.name && param.name.startsWith('param')) {
-                // Flatten top-level destructured object properties
-                addPropDocs(param.properties, "");
-            } else if (param.properties) {
-                paramDocs.push(`@param {${param.type}} ${param.name} - Object parameter`);
-                addPropDocs(param.properties, param.name);
-            } else if (param.elements && param.name && param.name.startsWith('param')) {
-                // Flatten top-level destructured array elements
-                addElementDocs(param.elements, "");
-            } else if (param.elements) {
-                addElementDocs(param.elements, param.name);
-            } else if (param.hasDefault) {
-                paramDocs.push(`@param {${param.type}} [${param.name}=${param.defaultValue}] - Parameter '${param.name}'`);
+        const pad = (str, len) => str + ' '.repeat(len - str.length);
+
+        // Helper function to generate documentation for a parameter
+        const docForParam = (param, parentName = "", kind = "param", isArrayElement = false) => {
+            const typeStr = param.type;
+            let nameStr;
+            if (isArrayElement && param.name) {
+                // For array elements, use just the identifier name
+                nameStr = param.name;
+            } else if (kind === "property" && parentName && param.name) {
+                // For nested object properties, use the full path
+                nameStr = `${parentName}.${param.name}`.replace(/^param\d+\./, '');
             } else {
-                paramDocs.push(`@param {${param.type}} ${param.name} - Parameter '${param.name}'`);
+                nameStr = parentName ? `${parentName}.${param.name}` : param.name;
+                nameStr = nameStr.replace(/^param\d+\./, '');
+            }
+            // Skip doc line for synthetic paramN names
+            if (/^param\d+$/.test(nameStr)) {
+                if (param.properties) {
+                    param.properties.forEach(p => docForParam(p, nameStr, "property"));
+                }
+                if (param.elements) {
+                    param.elements.forEach(e => { if (e) docForParam(e, nameStr, kind, true); });
+                }
+                return;
+            }
+            if (process.env.DEBUG) {
+                // eslint-disable-next-line no-console
+                console.log('[DEBUG docForParam]', { nameStr, typeStr, parentName, kind, isArrayElement });
+            }
+            let doc;
+            if (isArrayElement && param.isRest && (typeStr === 'Array' || typeStr === 'Array<any>')) {
+                doc = `@param {Array} ...${param.name.replace('...', '')} - Rest parameter`;
+            } else if (isArrayElement) {
+                if (param.hasDefault) {
+                    doc = `@param {${typeStr}} ${nameStr} - Default value: \`${param.defaultValue}\`. - Parameter '${param.name}'`;
+                } else {
+                    doc = `@param {${typeStr}} ${nameStr} - Parameter '${param.name}'`;
+                }
+            } else if (param.hasDefault) {
+                if (kind === "property" && !isArrayElement) {
+                    doc = `@param {${typeStr}} ${nameStr} - Default value: \`${param.defaultValue}\`. - Property '${param.name}'`;
+                } else {
+                    doc = `@param {${pad(typeStr, maxTypeLen)}} [${pad(nameStr, maxNameLen)}=${param.defaultValue}] - Parameter '${nameStr}'`;
+                }
+            } else if (param.isRest) {
+                doc = `@param {...${typeStr.replace('Array<', '').replace('>', '')}} ${nameStr.replace("...", "")} - Rest parameter`;
+            } else {
+                if (kind === "property" && !isArrayElement) {
+                    doc = `@param {${typeStr}} ${nameStr} - Property '${param.name}'`;
+                } else {
+                    doc = `@param {${pad(typeStr, maxTypeLen)}} ${pad(nameStr, maxNameLen)} - Parameter '${nameStr}'`;
+                }
+            }
+            if (typeStr === 'any') {
+                doc += ' (Type could not be inferred)';
+            }
+            paramDocs.push(doc);
+            if (param.properties) {
+                param.properties.forEach(p => docForParam(p, nameStr, "property"));
+            }
+            if (param.elements) {
+                param.elements.forEach(e => { if (e) docForParam(e, nameStr, kind, true); });
             }
         }
+        params.forEach(param => docForParam(param));
 
         const returnType = getReturnType(functionNode, isTypeScript);
         if (returnType) {
@@ -274,6 +323,11 @@ function generateParamDocs(functionNode, options = {}) {
             paramDocs.push(`@example ${functionName}(${exampleParams})`);
         }
 
+        // Before returning, log paramDocs
+        if (process.env.DEBUG) {
+            // eslint-disable-next-line no-console
+            console.log('DEBUG FINAL paramDocs:', JSON.stringify(paramDocs, null, 2));
+        }
         return paramDocs.join("\n * ");
     } catch (error) {
         // console.error("Error generating parameter docs:", error);
@@ -308,23 +362,11 @@ function getReturnType(functionNode, isTypeScript) {
     return null;
 }
 
-function parseCode(code) {
-    return parse(code, { ecmaVersion: "latest", sourceType: "module" });
-}
-
-function getFunctionNode(code) {
-    const ast = parseCode(code);
-    const functionNode = findFunctionNode(ast);
-    if (!functionNode) {
-        // console.log("Function node not found for code:", code);
-    }
-    return functionNode;
-}
-
 module.exports = {
     generateParamDocs,
     processFunctionNode,
     extractParams,
+    extractParam,
     getReturnType,
     findFunctionNode,
 };

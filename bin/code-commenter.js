@@ -27,8 +27,8 @@ program
       // If no files and not just --help or --version, show error
       if ((!files || files.length === 0) && !options.help && !options.version) {
         console.error("Error: No files specified.");
-        process.exit(1);
-      }
+      process.exit(1);
+    }
       if (options.help || options.version) {
         // Let commander handle help/version
         return;
@@ -57,7 +57,7 @@ program
         console.error('DEBUG processorOptions.noTodo:', processorOptions.noTodo);
         console.error('DEBUG processorOptions:', JSON.stringify(processorOptions));
       }
-      const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
+    const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
       const stats = await processFiles(normalizedFiles, processorOptions);
       if (stats.stderr) {
         const fs = require('fs');

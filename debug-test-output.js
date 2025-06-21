@@ -2,7 +2,7 @@ const { generateParamDocs, extractParams } = require("./src/param-utils");
 const { parse } = require("acorn");
 const fs = require("fs");
 
-const code = `function test({\n  a = 1,\n  b = { x: 1, y: 2 },\n  ...rest\n} = {}) {\n  return { a, b, ...rest };\n}`;
+const code = 'function test({ a = 1, b: { c, d: [e] } }, [f, ...g]) {}';
 
 // 1. Parse the code to AST
 const ast = parse(code, {
@@ -17,7 +17,7 @@ fs.writeFileSync("ast-output.json", JSON.stringify(ast, null, 2));
 console.log("Full AST saved to ast-output.json");
 
 // 3. Get the function node
-const functionNode = ast.body[0];
+const functionNode = ast.body.find(n => n.type === 'FunctionDeclaration');
 fs.writeFileSync("function-node.json", JSON.stringify(functionNode, null, 2));
 console.log("Function node saved to function-node.json");
 
@@ -37,15 +37,16 @@ console.log("Extracted parameters saved to extracted-params.json");
 
 // 6. Generate the full documentation
 console.log("Generating documentation...");
-const result = generateParamDocs(code);
-console.log("Generated docs:", result);
+const jsdoc = generateParamDocs(functionNode);
+console.log("--- Generated JSDoc ---");
+console.log(jsdoc);
 
 // 7. Save all results to a single file for easier inspection
 const output = `Code:
 ${code}
 
 Generated docs:
-${result}
+${jsdoc}
 
 Extracted parameters:
 ${JSON.stringify(params, null, 2)}`;

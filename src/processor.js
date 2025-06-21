@@ -8,11 +8,8 @@ const glob = require("glob").glob;
 const { parse: tsParse } = require("@typescript-eslint/typescript-estree");
 const { codeFrameColumns } = require("@babel/code-frame");
 
-// Enable colors for console output
-const colors = require("colors/safe");
-
 // Debug logging function
-function debug(...args) {
+function debug(..._args) {
   if (process.env.DEBUG) {
     // console.log("[DEBUG]", ...args);
   }
@@ -30,6 +27,22 @@ async function processFile(filePath, options = {}) {
 
   // Detect TypeScript files
   const isTypeScript = filePath.endsWith(".ts");
+
+  // Performance warning for large files
+  let code;
+  try {
+    code = await fs.readFile(filePath, "utf8");
+  } catch (err) {
+    const msg = `Error: File not found: ${filePath}`;
+    // eslint-disable-next-line no-console
+    console.error(msg);
+    if (options.exitOnError) return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+    return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
+  }
+  let performanceWarning = '';
+  if (code.length > 200000 || code.split('\n').length > 2000) {
+    performanceWarning = '/** WARNING: File is very large, code-commenter may be incomplete or slow. */\n';
+  }
 
   // Helper for TypeScript AST traversal
   function visitTSNode(node, parent, code, options, commentsToInsert) {
@@ -73,7 +86,6 @@ async function processFile(filePath, options = {}) {
     if (node.type === "ClassDeclaration" && node.body && node.body.body) {
       for (const method of node.body.body) {
         if (["MethodDefinition", "TSDeclareMethod"].includes(method.type)) {
-          const kind = method.kind || (method.key && method.key.name);
           let comment;
           if (method.kind === "get") {
             comment = generateFunctionComment(
@@ -124,21 +136,12 @@ async function processFile(filePath, options = {}) {
   try {
     // Read the file
     // debug("Reading file content...");
-    let code;
-    try {
-      code = await fs.readFile(filePath, "utf8");
-    } catch (err) {
-      const msg = `Error: File not found: ${filePath}`;
-      // Only report actual errors
-      console.error(msg);
-      if (options.exitOnError) return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
-      return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
-    }
-    // debug(`File size: ${code.length} characters`);
     if (code.trim() === "") {
       if (!options.dryRun && options.output) {
+        // eslint-disable-next-line no-console
         console.log("(no changes needed)");
       } else if (options.dryRun) {
+        // eslint-disable-next-line no-console
         console.log("(no changes needed)");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
@@ -159,6 +162,7 @@ async function processFile(filePath, options = {}) {
         });
         const msg = `Error: parsing failed for file: ${filePath}\n${frame}`;
         // Only report actual errors
+        // eslint-disable-next-line no-console
         console.error(msg);
         if (options.exitOnError)
           return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
@@ -181,6 +185,7 @@ async function processFile(filePath, options = {}) {
         });
         const msg = `Error: parsing failed for file: ${filePath}\n${frame}`;
         // Only report actual errors
+        // eslint-disable-next-line no-console
         console.error(msg);
         if (options.exitOnError)
           return { error: msg, filePath, skipped: false, exitCode: 1, stderr: msg };
@@ -189,19 +194,7 @@ async function processFile(filePath, options = {}) {
       // debug("AST parsed successfully");
       setParents(ast, null);
       commentsToInsert = [];
-      // Debug function to log node info
-      const logNodeInfo = (node, type) => {
-        if (!process.env.DEBUG) return;
-        // debug(`Found ${type} at line ${node.loc.start.line}`);
-        // debug("Node type:", node.type);
-        // if (node.id) debug("Function name:", node.id.name);
-        // if (node.params && node.params.length > 0) {
-        //   debug(
-        //     "Parameters:",
-        //     node.params.map((p) => p.name || p.type).join(", "),
-        //   );
-        // }
-      };
+
       // Walk the AST to find functions without comments
       // debug("Walking AST to find functions...");
       walk.simple(ast, {
@@ -303,8 +296,10 @@ async function processFile(filePath, options = {}) {
     // If no comments to add, return early
     if (commentsToInsert.length === 0) {
       if (!options.dryRun && options.output) {
+        // eslint-disable-next-line no-console
         console.log("(no changes needed)");
       } else if (options.dryRun) {
+        // eslint-disable-next-line no-console
         console.log("(no changes needed)");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
@@ -335,10 +330,20 @@ async function processFile(filePath, options = {}) {
 
     // Write the file if not in dry-run mode
     if (!options.dryRun) {
-      await fs.writeFile(outputPath, newCode, "utf8");
+      let finalCode = newCode;
+      if (performanceWarning) {
+        finalCode = performanceWarning + newCode;
+      }
+      await fs.writeFile(outputPath, finalCode, "utf8");
     } else {
       if (!process.env.BENCHMARK) {
+        if (performanceWarning) {
+          // eslint-disable-next-line no-console
+          console.log(performanceWarning);
+        }
+        // eslint-disable-next-line no-console
         console.log(`(dry run) ${filePath}`);
+        // eslint-disable-next-line no-console
         console.log(newCode);
       }
       return {
@@ -443,23 +448,20 @@ function generateFunctionComment(node, code, functionName = "", options = {}) {
     if (options.noTodo) {
       comment += ` * @summary ${functionName || "Function"}\n`;
     } else {
-      comment += ` * @summary TODO: Document what ${functionName || "Function"} does\n`;
+      comment += ` * @summary TODO: Describe what this function does (auto-generated)\n`;
     }
     if (paramDocs) {
       if (!options.noTodo) {
         comment += ` * \n`;
       }
       comment += ` * ${paramDocs}\n`;
-    }
+      }
     comment += " */";
     return comment;
   } catch (error) {
-    // console.error(
-    //   `Error generating comment for function: ${functionName}`,
-    //   error.message,
-    // );
+    // If error, return a warning comment
+    return '/** TODO: Parsing failed for this function. Please check manually. */';
   }
-  return null;
 }
 
 /**

@@ -1,22 +1,21 @@
 const fs = require("fs/promises");
 const path = require("path");
-const chalk = require("chalk");
 /**
  * Recursively find all JavaScript files matching the given patterns
  * @param {string|string[]} patterns - Glob pattern(s) to match files
  * @returns {Promise<string[]>} Array of file paths
  */
 async function findJsFiles(patterns) {
-  const patternList = Array.isArray(patterns) ? patterns : [patterns];
-  const results = await Promise.all(
-    patternList.map((pattern) =>
-      glob(pattern, {
-        nodir: true,
-        ignore: ["**/node_modules/**", "**/.git/**"],
-      }),
-    ),
-  );
-  return Array.from(new Set(results.flat()));
+    const patternList = Array.isArray(patterns) ? patterns : [patterns];
+    const results = await Promise.all(
+      patternList.map((pattern) =>
+        glob(pattern, {
+          nodir: true,
+          ignore: ["**/node_modules/**", "**/.git/**"],
+        }),
+      ),
+    );
+    return Array.from(new Set(results.flat()));
 }
 
 /**
@@ -73,13 +72,13 @@ function formatFileSize(bytes) {
  * @returns {Promise<Object>} File stats
  */
 async function getFileStats(filePath) {
-  const stats = await fs.stat(filePath);
-  return {
-    size: stats.size,
-    sizeFormatted: formatFileSize(stats.size),
-    modified: stats.mtime,
-    isDirectory: stats.isDirectory(),
-  };
+    const stats = await fs.stat(filePath);
+    return {
+      size: stats.size,
+      sizeFormatted: formatFileSize(stats.size),
+      modified: stats.mtime,
+      isDirectory: stats.isDirectory(),
+    };
 }
 
 /**
