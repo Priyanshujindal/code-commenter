@@ -8,6 +8,7 @@ console.log("Node.js version:", process.version);
 const { program } = require("commander");
 const { processFiles } = require("../src/processor");
 const path = require("path");
+const fs = require("fs");
 
 console.log("Dependencies loaded successfully");
 
@@ -22,35 +23,32 @@ program
     "output directory (default: overwrite original files)",
   )
   .option("-d, --debug", "Enable debug output")
-  .option("--no-todo", "skip adding TODO comments for missing documentation")
+  .option("--no-todo", "Do not add TODO comments")
   .option("--dry-run", "perform a dry run without writing files")
+  .option("-c, --config <path>", "Path to a JSON configuration file")
   .action(async (files, options) => {
-    if (!files || files.length === 0) {
-      console.error("Error: No files specified");
-      process.exit(1);
-    }
-    if (options.debug) process.env.DEBUG = "1";
-    // Normalize file paths to absolute paths
-    const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
     try {
-      const result = await processFiles(normalizedFiles, {
-        ...options,
-        exitOnError: true,
-      });
-      console.log("DEBUG: processFiles result:", JSON.stringify(result));
-      if (options.dryRun) {
-        console.log("(dry run)");
+      if (files.length === 0) {
+        console.error("Error: No files specified.");
+        process.exit(1);
       }
-      if (result.exitCode === 1) {
-        process.exitCode = 1;
+
+      let config = {};
+      if (options.config) {
+        const configPath = path.resolve(process.cwd(), options.config);
+        if (fs.existsSync(configPath)) {
+          const configContent = fs.readFileSync(configPath, "utf8");
+          config = JSON.parse(configContent);
+        }
       }
+
+      const mergedOptions = { ...config, ...options };
+
+      const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
+      const { exitCode } = await processFiles(normalizedFiles, mergedOptions);
+      process.exit(exitCode);
     } catch (error) {
-      console.error("Error in processFiles:", {
-        message: error.message,
-        stack: error.stack,
-        code: error.code,
-        name: error.name,
-      });
+      console.error("Error in processFiles:", error.message);
       process.exit(1);
     }
   });

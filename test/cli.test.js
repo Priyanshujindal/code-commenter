@@ -1,5 +1,5 @@
 const { execSync } = require("child_process");
-const fs = require("fs").promises;
+const fs = require("fs/promises");
 const path = require("path");
 const os = require("os");
 
@@ -7,7 +7,7 @@ const os = require("os");
 const CLI_PATH = path.join(__dirname, "..", "bin", "code-commenter.js");
 
 // Test file paths
-const TEST_DIR = path.join(__dirname, "fixtures");
+const TEST_DIR = "test/fixtures";
 const TEST_FILE = path.join(TEST_DIR, "test-file.js");
 const TEST_OUTPUT_DIR = path.join(TEST_DIR, "output");
 
@@ -36,10 +36,15 @@ function runCLI(args = [], options = {}) {
 
 describe("CLI", () => {
   beforeAll(async () => {
-    // Create test directory and file
     await fs.mkdir(TEST_DIR, { recursive: true });
+  });
 
-    // Create a test file with some functions
+  afterAll(async () => {
+    await fs.rm(TEST_DIR, { recursive: true, force: true });
+  });
+
+  beforeEach(async () => {
+    // Create a dummy test file
     const testCode = `// Test file for code-commenter
 
 function testFunction(param1, param2) {
@@ -48,18 +53,16 @@ function testFunction(param1, param2) {
 
 const testArrow = (a, b) => a + b;
 `;
-
-    await fs.writeFile(TEST_FILE, testCode, "utf8");
+    await fs.writeFile(TEST_FILE, testCode);
   });
 
-  afterAll(async () => {
-    // Clean up test files
+  afterEach(async () => {
+    // Cleanup
+    await fs.unlink(TEST_FILE);
     try {
-      await fs.unlink(TEST_FILE);
       await fs.rm(TEST_OUTPUT_DIR, { recursive: true, force: true });
-      await fs.rm(TEST_DIR, { recursive: true, force: true });
     } catch (error) {
-      console.error("Cleanup error:", error);
+      // Ignore errors during cleanup
     }
   });
 
@@ -175,6 +178,25 @@ const testArrow = (a, b) => a + b;
     const { status, stdout } = runCLI(["--dry-run", "--no-todo", TEST_FILE]);
     expect(status).toBe(0);
     expect(stdout).not.toContain("TODO");
+  });
+
+  it("should use a config file", async () => {
+    const configFile = "test.config.json";
+    const config = {
+      jsdocTemplate: "/**\n * {name}\n * {params}\n * {returns}\n */",
+    };
+    await fs.writeFile(configFile, JSON.stringify(config));
+
+    const { status, stdout } = runCLI([
+      "--config",
+      configFile,
+      "--dry-run",
+      TEST_FILE,
+    ]);
+    expect(status).toBe(0);
+    expect(stdout).toContain("testFunction"); // Function name from test file
+
+    await fs.unlink(configFile);
   });
 
   it("should handle very large files", async () => {
