@@ -7,215 +7,200 @@ const { parse } = require("acorn");
 const { generate } = require("escodegen");
 
 function getPropertyName(property) {
-    if (property.key) {
-        return property.key.name;
-    }
-    if (property.argument) {
-        return property.argument.name;
-    }
+    if (!property) return "unknown";
+    if (property.key) return property.key.name;
+    if (property.argument) return property.argument.name;
+    if (property.type === "Identifier") return property.name;
     return "unknown";
 }
 
-function extractObjectPatternProperties(properties, isTypeScript, parentName = "") {
-    const params = [];
-    if (!properties) {
-        return params;
+function getTSType(tsNode, defaultType = "any") {
+    if (!tsNode) return defaultType;
+    if (tsNode.typeAnnotation) return getTSType(tsNode.typeAnnotation, defaultType);
+    if (tsNode.type === 'TSTypeAnnotation') return getTSType(tsNode.typeAnnotation, defaultType);
+    
+    switch (tsNode.type) {
+        case 'TSStringKeyword': return 'string';
+        case 'TSNumberKeyword': return 'number';
+        case 'TSBooleanKeyword': return 'boolean';
+        case 'TSArrayType':
+            const elementType = getTSType(tsNode.elementType, 'any');
+            return `Array<${elementType}>`;
+        case 'TSTypeReference': return tsNode.typeName?.name || defaultType;
+        default: return defaultType;
     }
-    for (const property of properties) {
-        if (!property) continue;
-
-        let param;
-        const name = getPropertyName(property);
-        const newParentName = parentName ? `${parentName}.${name}` : name;
-
-        if (property.type === "Property") {
-            param = processProperty(property, isTypeScript, newParentName);
-        } else if (property.type === "RestElement") {
-            param = extractParam(property, isTypeScript);
-        } else {
-            param = extractParam(property, isTypeScript);
-        }
-
-        if (param) {
-            params.push(param);
-        }
-    }
-
-    return params;
 }
 
-function processProperty(property, isTypeScript, parentName) {
-    let param;
+function extractObjectPatternProperties(properties, isTypeScript, parentName) {
+    const extracted = [];
+    if (!properties) return extracted;
 
-    switch (property.value.type) {
-        case "ObjectPattern":
-            param = {
-                name: parentName,
-                type: "Object",
-                properties: extractObjectPatternProperties(
-                    property.value.properties,
-                    isTypeScript,
-                    parentName
-                ),
-            };
-            break;
-        case "ArrayPattern":
-            param = {
-                name: parentName,
-                type: "Array",
-                properties: property.value.elements.map((element, index) => {
-                    const elementName = element.name || `element${index}`;
-                    return processProperty(
-                        {
-                            key: { name: elementName },
-                            value: element,
-                        },
-                        isTypeScript,
-                        `${parentName}.${elementName}`
-                    );
-                }),
-            };
-            break;
-        case "AssignmentPattern":
-            param = processProperty(
-                {
-                    key: property.key,
-                    value: property.value.left,
-                },
+    for (const prop of properties) {
+        if (prop.type === "RestElement") {
+            extracted.push({ name: getPropertyName(prop), type: 'Object', isRest: true, hasDefault: false });
+            continue;
+        }
+        
+        if (prop.type !== "Property") continue;
+
+        const propName = getPropertyName(prop);
+        let valueNode = prop.value;
+        let defaultValue;
+        let hasDefault = false;
+        let type = "any";
+
+        if(isTypeScript) {
+            if(valueNode.type === "Identifier" && valueNode.typeAnnotation) {
+                type = getTSType(valueNode.typeAnnotation);
+            } else if (valueNode.type === "AssignmentPattern" && valueNode.left.typeAnnotation) {
+                type = getTSType(valueNode.left.typeAnnotation);
+            } else if (prop.typeAnnotation){
+                type = getTSType(prop.typeAnnotation);
+            }
+        }
+
+        if (valueNode.type === "AssignmentPattern") {
+            hasDefault = true;
+            const right = valueNode.right;
+            defaultValue = generate(right, { format: { quotes: 'double' }});
+            if (right.type === 'Literal') {
+                if(typeof right.value === 'number') type = 'number';
+                if(typeof right.value === 'string') type = 'string';
+                if(typeof right.value === 'boolean') type = 'boolean';
+            }
+            valueNode = valueNode.left;
+        }
+
+        const param = { name: propName, type, hasDefault, optional: false };
+        if (defaultValue) {
+            param.defaultValue = defaultValue;
+        }
+
+        if (valueNode.type === "ObjectPattern") {
+            param.type = "Object";
+            param.properties = extractObjectPatternProperties(
+                valueNode.properties,
                 isTypeScript,
-                parentName
+                propName
             );
-            param.hasDefault = true;
-            param.defaultValue = generate(property.value.right);
-            break;
-        default:
-            param = {
-                name: parentName,
-                type: "any",
-                hasDefault: false,
-                optional: false,
-            };
-            break;
+        } else if (valueNode.type === "ArrayPattern") {
+            param.type = "Array";
+            param.elements = valueNode.elements.map((e, i) => extractParam(e, isTypeScript, i));
+        }
+
+        extracted.push(param);
     }
-    return param;
+    return extracted;
 }
 
-function extractParam(p, isTypeScript) {
+function extractParam(p, isTypeScript, paramIndex) {
+    if (!p) return null;
     let paramInfo = null;
     switch (p.type) {
         case "Identifier":
-            paramInfo = {
-                name: p.name,
-                type: "any",
-                isRest: false,
-                hasDefault: false,
-                optional: false,
-                isParamProperty: false,
-            };
+            paramInfo = { name: p.name, type: isTypeScript ? getTSType(p) : "any", isRest: false, hasDefault: false, optional: false, isParamProperty: false };
             break;
         case "AssignmentPattern":
-            if (p.left.type === "Identifier") {
-                paramInfo = {
-                    name: p.left.name,
-                    type: "any",
-                    hasDefault: true,
-                    defaultValue: generate(p.right),
-                    isRest: false,
-                    optional: false,
-                    isParamProperty: false,
-                };
+            paramInfo = extractParam(p.left, isTypeScript, paramIndex);
+            if (paramInfo) {
+                paramInfo.hasDefault = true;
+                paramInfo.defaultValue = generate(p.right, { format: { quotes: 'double' } });
             }
             break;
+        case "ObjectPattern":
+            paramInfo = { name: `param${paramIndex}`, type: isTypeScript ? getTSType(p, 'Object') : 'Object', isRest: false, hasDefault: false, properties: extractObjectPatternProperties(p.properties, isTypeScript, "") };
+            break;
+        case "ArrayPattern":
+            paramInfo = { name: `param${paramIndex}`, type: "Array", isRest: false, hasDefault: false, elements: p.elements.map((e, i) => extractParam(e, isTypeScript, i)) };
+            break;
         case "RestElement":
-            paramInfo = {
-                name: `...${p.argument.name}`,
-                type: "Array<any>",
-                isRest: true,
-                hasDefault: false,
-                optional: false,
-            };
+            paramInfo = { name: `...${getPropertyName(p)}`, type: isTypeScript ? getTSType(p.argument) : "Array<any>", isRest: true, hasDefault: false, optional: false };
+            break;
+        case "TSParameterProperty":
+            paramInfo = extractParam(p.parameter, isTypeScript, paramIndex);
+            if (paramInfo) {
+                paramInfo.isParamProperty = true;
+                paramInfo.type = getTSType(p.parameter);
+            }
             break;
     }
     return paramInfo;
 }
 
 function extractParams(node, isTypeScript = false) {
-    if (!node || !node.params) return [];
+    const paramNodes = node.params || (node.value && node.value.params);
+    if (!paramNodes) return [];
 
     const processedParams = [];
     let paramIndex = 1;
 
-    for (const param of node.params) {
-        if (param.type === "ObjectPattern") {
-            const baseName = `param${paramIndex}`;
-            paramIndex++;
-            const properties = extractObjectPatternProperties(param.properties, isTypeScript, baseName);
-            processedParams.push({
-                name: baseName,
-                type: "Object",
-                isRest: false,
-                hasDefault: false,
-                properties: properties,
-            });
-        } else if (param.type === "ArrayPattern") {
-            const baseName = `param${paramIndex}`;
-            paramIndex++;
-            processedParams.push({
-                name: baseName,
-                type: "Array",
-                isRest: false,
-                hasDefault: false,
-                elements: param.elements.map((e) => extractParam(e, isTypeScript))
-            });
-        } else {
-            const extracted = extractParam(param, isTypeScript);
-            if (extracted) {
-                processedParams.push(extracted);
+    for (const p of paramNodes) {
+        const extracted = extractParam(p, isTypeScript, paramIndex);
+        if (extracted) {
+            processedParams.push(extracted);
+            if (extracted.name && extracted.name.startsWith('param')) {
+                paramIndex++;
             }
         }
     }
-
     return processedParams;
+}
+
+function findFunctionNode(ast) {
+    if (!ast.body || ast.body.length === 0) return null;
+    let node = ast.body[0];
+
+    if (node.type === "ExpressionStatement") node = node.expression;
+    if (node.type === "VariableDeclaration") node = node.declarations[0].init;
+    if (node.type === "ClassDeclaration") {
+        const constructor = node.body.body.find((def) => def.kind === "constructor");
+        if(constructor) return constructor;
+        return node.body.body.find((def) => def.kind === "method");
+    }
+
+    if (typeof node === 'object' && node !== null && 'params' in node) {
+        return node;
+    }
+
+    return null;
 }
 
 function generateParamDocs(code) {
     try {
-        const ast = parse(code, { ecmaVersion: "latest", sourceType: "module" });
-        let functionNode;
+        const ast = parse(code, {ecmaVersion: "latest", sourceType: "module", plugins: ['typescript']});
+        const functionNode = findFunctionNode(ast);
+        if (!functionNode) return "";
 
-        if (ast.body[0].type === 'ExpressionStatement' && ast.body[0].expression.type === 'ArrowFunctionExpression') {
-            functionNode = ast.body[0].expression;
-        } else if (ast.body[0].type === 'ExpressionStatement' && ast.body[0].expression.type === 'FunctionExpression') {
-            functionNode = ast.body[0].expression;
-        } else if (ast.body[0].type === 'FunctionDeclaration') {
-            functionNode = ast.body[0];
-        } else if (ast.body[0].type === 'VariableDeclaration') {
-            functionNode = ast.body[0].declarations[0].init;
-        } else if (ast.body[0].type === 'ClassDeclaration'){
-            functionNode = ast.body[0].body.body.find(def => def.kind === 'method');
-        } else {
-            functionNode = ast.body[0].declaration || ast.body[0].expression || ast.body[0];
-        }
-
-        const params = extractParams(functionNode);
+        const isTypeScript = code.includes("class") || /:/.test(code);
+        const params = extractParams(functionNode, isTypeScript);
         const paramDocs = [];
+
+        const addPropDocs = (properties, parentName) => {
+            for (const prop of properties) {
+                const docName = parentName ? `${parentName}.${prop.name}`: prop.name;
+                let propDoc = `@param {${prop.type}} ${docName}`;
+                if (prop.hasDefault && !prop.properties) {
+                    propDoc += `=${prop.defaultValue}`;
+                }
+                propDoc += ` - Property '${prop.name}'`;
+                paramDocs.push(propDoc);
+
+                if (prop.properties) {
+                    addPropDocs(prop.properties, docName);
+                }
+            }
+        };
 
         for (const param of params) {
             if (param.isRest) {
-                paramDocs.push(`@param {...*} ${param.name.replace("...", "")} - Rest parameter`);
+                paramDocs.push(`@param {...${param.type.replace('Array<', '').replace('>', '')}} ${param.name.replace("...", "")} - Rest parameter`);
             } else if (param.properties) {
                 paramDocs.push(`@param {${param.type}} ${param.name} - Object parameter`);
-                for (const prop of param.properties) {
-                    if (prop.hasDefault) {
-                        paramDocs.push(`@param {any} ${prop.name}=${prop.defaultValue} - Property '${prop.name.split('.').pop()}'`);
-                    } else {
-                        paramDocs.push(`@param {any} ${prop.name} - Property '${prop.name.split('.').pop()}'`);
-                    }
-                }
+                addPropDocs(param.properties, param.name);
             } else if (param.hasDefault) {
-                paramDocs.push(`@param {any} ${param.name}=${param.defaultValue} - Parameter '${param.name}'`);
+                paramDocs.push(`@param {${param.type}} ${param.name}=${param.defaultValue} - Parameter '${param.name}'`);
             } else {
-                paramDocs.push(`@param {any} ${param.name} - Parameter '${param.name}'`);
+                paramDocs.push(`@param {${param.type}} ${param.name} - Parameter '${param.name}'`);
             }
         }
         return paramDocs.join("\n");

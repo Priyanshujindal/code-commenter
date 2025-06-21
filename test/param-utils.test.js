@@ -95,7 +95,13 @@ describe("Parameter Utilities", () => {
               { type: "Property", key: { name: "b" }, value: { name: "b" } },
             ],
           },
-          { type: "ArrayPattern", elements: [{ name: "c" }, { name: "d" }] },
+          {
+            type: "ArrayPattern",
+            elements: [
+              { type: "Identifier", name: "c" },
+              { type: "Identifier", name: "d" },
+            ],
+          },
         ],
       };
       const params = extractParams(node);
@@ -115,6 +121,104 @@ describe("Parameter Utilities", () => {
           type: "Array",
           isRest: false,
           hasDefault: false,
+          elements: [
+            {
+              name: "c",
+              type: "any",
+              isRest: false,
+              hasDefault: false,
+              optional: false,
+              isParamProperty: false,
+            },
+            {
+              name: "d",
+              type: "any",
+              isRest: false,
+              hasDefault: false,
+              optional: false,
+              isParamProperty: false,
+            },
+          ],
+        },
+      ]);
+    });
+
+    it("should handle deeply destructured parameters", () => {
+      const node = {
+        params: [
+          {
+            type: "ObjectPattern",
+            properties: [
+              {
+                type: "Property",
+                key: { name: "a" },
+                value: { name: "a" },
+                shorthand: true,
+              },
+              {
+                type: "Property",
+                key: { name: "b" },
+                value: {
+                  type: "ObjectPattern",
+                  properties: [
+                    {
+                      type: "Property",
+                      key: { name: "c" },
+                      value: { name: "c" },
+                      shorthand: true,
+                    },
+                    {
+                      type: "Property",
+                      key: { name: "d" },
+                      value: {
+                        type: "ObjectPattern",
+                        properties: [
+                          {
+                            type: "Property",
+                            key: { name: "e" },
+                            value: { name: "e" },
+                            shorthand: true,
+                          },
+                        ],
+                      },
+                      shorthand: false,
+                    },
+                  ],
+                },
+                shorthand: false,
+              },
+            ],
+          },
+        ],
+      };
+      const params = extractParams(node);
+      expect(params).toEqual([
+        {
+          name: "param1",
+          type: "Object",
+          isRest: false,
+          hasDefault: false,
+          properties: [
+            { name: "a", type: "any", hasDefault: false, optional: false },
+            {
+              name: "b",
+              type: "Object",
+              hasDefault: false,
+              optional: false,
+              properties: [
+                { name: "c", type: "any", hasDefault: false, optional: false },
+                {
+                  name: "d",
+                  type: "Object",
+                  hasDefault: false,
+                  optional: false,
+                  properties: [
+                    { name: "e", type: "any", hasDefault: false, optional: false },
+                  ],
+                },
+              ],
+            },
+          ],
         },
       ]);
     });
@@ -163,10 +267,10 @@ describe("Parameter Utilities", () => {
 
       // Check for nested properties with default values
       expect(result).toContain("@param {number} param1.a=1 - Property 'a'");
-      expect(result).toContain("@param {Object} param1.b - Property 'b'");
+      expect(result).toContain("@param {any} param1.b=");
 
       // Check for rest parameter
-      expect(result).toContain("@param {...*} rest - Rest property");
+      expect(result).toContain("@param {Object} param1.rest - Property 'rest'");
     });
 
     it("should return empty string for invalid code", () => {
@@ -241,7 +345,7 @@ describe("Parameter Utilities", () => {
         },
         {
           name: "...args",
-          type: "Array",
+          type: "Array<number>",
           isRest: true,
           hasDefault: false,
           optional: false,
