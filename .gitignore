@@ -6,6 +6,13 @@ yarn.lock
 # Build output
 dist/
 coverage/
+ast-output.json
+extracted-params.json
+function-node.json
+function-params.json
+test-output.txt
+test-results.json
+desktop.ini
 
 # Logs
 logs
@@ -74,5 +81,5 @@ build/
 *.local
 
 # Example files (we'll add our own)
-examples/*.js
-!examples/example.js
+# examples/*.js
+# !examples/example.js
