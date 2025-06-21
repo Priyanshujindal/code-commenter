@@ -1,9 +1,9 @@
 # Code Commenter
 
 [![npm version](https://badge.fury.io/js/code-commenter.svg)](https://badge.fury.io/js/code-commenter)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
-[![Node.js CI](https://github.com/yourusername/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/yourusername/code-commenter/actions/workflows/node.js.yml)
-[![codecov](https://codecov.io/gh/yourusername/code-commenter/graph/badge.svg?token=YOUR-TOKEN-HERE)](https://codecov.io/gh/yourusername/code-commenter)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Build Status](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/Priyanshujindal/code-commenter/actions)
+[![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg?token=YOUR-TOKEN-HERE)](https://codecov.io/gh/Priyanshujindal/code-commenter)
 
 A CLI tool that scans JavaScript files and suggests simple, beginner-friendly comments for functions and code blocks. It helps improve code documentation by identifying undocumented functions and adding TODO comments where documentation is missing.
 
@@ -135,7 +135,7 @@ This tool is production-ready and fully tested. All features and edge cases are 
 
 1. Clone the repository:
    ```bash
-   git clone https://github.com/yourusername/code-commenter.git
+   git clone https://github.com/Priyanshujindal/code-commenter.git
    cd code-commenter
    ```
 
@@ -183,13 +183,13 @@ This project uses GitHub Actions for CI/CD. The workflow includes:
 - Linting and code formatting checks
 - Build verification
 
-[![Node.js CI](https://github.com/yourusername/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/yourusername/code-commenter/actions/workflows/node.js.yml)
+[![Node.js CI](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml)
 
 ### Coverage Reports
 
 Code coverage reports are generated during CI and can be viewed on Codecov:
 
-[![codecov](https://codecov.io/gh/yourusername/code-commenter/graph/badge.svg?token=YOUR-TOKEN-HERE)](https://codecov.io/gh/yourusername/code-commenter)
+[![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg?token=YOUR-TOKEN-HERE)](https://codecov.io/gh/Priyanshujindal/code-commenter)
 
 ## Contributing
 
