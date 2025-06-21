@@ -207,6 +207,11 @@ function generateParamDocs(code) {
                 paramDocs.push(`@param {${param.type}} ${param.name} - Parameter '${param.name}'`);
             }
         }
+
+        if (code.includes("return")) {
+            paramDocs.push(`@returns {any} - The return value`);
+        }
+
         return paramDocs.join("\n");
     } catch (error) {
         // console.error("Error parsing code:", error);

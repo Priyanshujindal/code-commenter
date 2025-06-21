@@ -277,6 +277,15 @@ describe("Parameter Utilities", () => {
       const result = generateParamDocs("!@#$%");
       expect(result).toBe("");
     });
+
+    it("should add a @returns tag if a return statement is present", () => {
+      const code = `
+function add(a, b) {
+  return a + b;
+}`;
+      const result = generateParamDocs(code);
+      expect(result).toContain("@returns");
+    });
   });
 
   describe("TypeScript parameter extraction", () => {
