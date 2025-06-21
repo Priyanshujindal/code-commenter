@@ -18,14 +18,14 @@ function getTSType(tsNode, defaultType = "any") {
     if (!tsNode) return defaultType;
     if (tsNode.typeAnnotation) return getTSType(tsNode.typeAnnotation, defaultType);
     if (tsNode.type === 'TSTypeAnnotation') return getTSType(tsNode.typeAnnotation, defaultType);
-    
     switch (tsNode.type) {
         case 'TSStringKeyword': return 'string';
         case 'TSNumberKeyword': return 'number';
         case 'TSBooleanKeyword': return 'boolean';
-        case 'TSArrayType':
+        case 'TSArrayType': {
             const elementType = getTSType(tsNode.elementType, 'any');
             return `Array<${elementType}>`;
+        }
         case 'TSTypeReference': return tsNode.typeName?.name || defaultType;
         default: return defaultType;
     }
@@ -34,21 +34,17 @@ function getTSType(tsNode, defaultType = "any") {
 function extractObjectPatternProperties(properties, isTypeScript, parentName) {
     const extracted = [];
     if (!properties) return extracted;
-
     for (const prop of properties) {
         if (prop.type === "RestElement") {
             extracted.push({ name: getPropertyName(prop), type: 'Object', isRest: true, hasDefault: false });
             continue;
         }
-        
         if (prop.type !== "Property") continue;
-
         const propName = getPropertyName(prop);
         let valueNode = prop.value;
         let defaultValue;
         let hasDefault = false;
         let type = "any";
-
         if(isTypeScript) {
             if(valueNode.type === "Identifier" && valueNode.typeAnnotation) {
                 type = getTSType(valueNode.typeAnnotation);
