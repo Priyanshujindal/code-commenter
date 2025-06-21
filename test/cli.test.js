@@ -246,7 +246,11 @@ const testArrow = (a, b) => a + b;
         const { status } = runCLI(["--dry-run", symlink]);
         expect(status).toBe(0);
       } finally {
-        fsSync.unlinkSync(symlink).catch(() => {});
+        try {
+          fsSync.unlinkSync(symlink);
+        } catch (e) {
+          // ignore errors in symlink cleanup
+        }
       }
     });
   }

@@ -137,9 +137,9 @@ async function processFile(filePath, options = {}) {
     // debug(`File size: ${code.length} characters`);
     if (code.trim() === "") {
       if (!options.dryRun && options.output) {
-        // console.log("(no changes needed)");
+        console.log("(no changes needed)");
       } else if (options.dryRun) {
-        // console.log("(no changes needed)");
+        console.log("(no changes needed)");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
     }
@@ -303,9 +303,9 @@ async function processFile(filePath, options = {}) {
     // If no comments to add, return early
     if (commentsToInsert.length === 0) {
       if (!options.dryRun && options.output) {
-        // console.log("(no changes needed)");
+        console.log("(no changes needed)");
       } else if (options.dryRun) {
-        // console.log("(no changes needed)");
+        console.log("(no changes needed)");
       }
       return { commentsAdded: 0, skipped: true, exitCode: 0 };
     }
@@ -338,8 +338,8 @@ async function processFile(filePath, options = {}) {
       await fs.writeFile(outputPath, newCode, "utf8");
     } else {
       if (!process.env.BENCHMARK) {
-        // console.log(`(dry run) ${filePath}`);
-        // console.log(newCode);
+        console.log(`(dry run) ${filePath}`);
+        console.log(newCode);
       }
       return {
         commentsAdded: commentsToInsert.length,
@@ -494,7 +494,7 @@ async function processFiles(patterns, options = {}) {
     if (files.length === 0) {
       const msg = "Error: No files found matching the patterns";
       // console.error(msg);
-      return { processed: 0, skipped: 0, errors: 1, exitCode: 1 };
+      return { processed: 0, skipped: 0, errors: 1, exitCode: 1, stderr: msg };
     }
     debug(`Found ${files.length} files to process`);
     let processed = 0;
