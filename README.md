@@ -16,7 +16,7 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
   - Deeply nested and destructured parameters.
   - Rest parameters and TypeScript parameter properties.
   - Functions in object literals.
-- Smart type inference for parameters and return values.
+- Smart type inference for parameters and return values (infers from default values).
 - Customizable comment templates via `code-commenter.config.json`.
 - Skips already-documented functions.
 - Robust error handling and a user-friendly CLI.
