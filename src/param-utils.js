@@ -153,7 +153,7 @@ function extractParams(node, isTypeScript = false) {
         const extracted = extractParam(p, isTypeScript, paramIndex);
         if (extracted) {
             processedParams.push(extracted);
-            if (extracted.name && extracted.name.startsWith('param')) {
+            if (extracted.name && extracted.name.startsWith("param")) {
                 paramIndex++;
             }
         }

@@ -23,9 +23,9 @@ program
     "-o, --output <path>",
     "output directory (default: overwrite original files)",
   )
-  .option("-d, --debug", "Enable debug output")
+  .option("--dry-run", "Show what would change, but don't write files")
+  .option("--debug", "Show debug output")
   .option("--no-todo", "Do not add TODO comments")
-  .option("--dry-run", "perform a dry run without writing files")
   .option("-c, --config <path>", "Path to a JSON configuration file")
   .action(async (files, options) => {
     try {
@@ -43,11 +43,24 @@ program
         }
       }
 
-      const mergedOptions = { ...config, ...options };
+      if (options.debug) {
+        process.env.DEBUG = "true";
+      }
 
-    const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
-      const { exitCode } = await processFiles(normalizedFiles, mergedOptions);
-      process.exit(exitCode);
+      if (options.config) {
+        console.log(`Loading config from: ${options.config}`);
+      }
+
+      const processorOptions = {
+        ...config,
+        ...options,
+      };
+
+      const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
+      const stats = await processFiles(normalizedFiles, processorOptions);
+
+      console.log("\nProcessing complete.");
+      process.exit(0);
     } catch (error) {
       console.error("Error in processFiles:", error.message);
       process.exit(1);
