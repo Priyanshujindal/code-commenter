@@ -214,4 +214,24 @@ const testArrow = (a, b) => a + b;
 
     await fs.unlink(largeFile);
   });
+
+  it("should show the version number", () => {
+    const { version } = require("../package.json");
+    const { status, stdout } = runCLI(["--version"]);
+    expect(status).toBe(0);
+    expect(stdout).toContain(version);
+  });
+
+  if (os.platform() !== "win32") {
+    it("should handle symlinks correctly", async () => {
+      const symlink = path.join(TEST_DIR, "symlink-test-file.js");
+      try {
+        await fs.symlink(TEST_FILE, symlink);
+        const { status } = runCLI(["--dry-run", symlink]);
+        expect(status).toBe(0);
+      } finally {
+        await fs.unlink(symlink).catch(() => {});
+      }
+    });
+  }
 });

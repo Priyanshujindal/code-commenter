@@ -9,6 +9,7 @@ const { program } = require("commander");
 const { processFiles } = require("../src/processor");
 const path = require("path");
 const fs = require("fs");
+const { version } = require("../package.json");
 
 console.log("Dependencies loaded successfully");
 
@@ -16,7 +17,7 @@ console.log("Dependencies loaded successfully");
 program
   .name("code-commenter")
   .description("A CLI tool that adds helpful comments to JavaScript code")
-  .version("1.0.0")
+  .version(version)
   .argument("<files...>", "Files to process")
   .option(
     "-o, --output <path>",
