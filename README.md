@@ -5,18 +5,20 @@
 [![Build Status](https://github.com/Priyanshujindal/code-commenter/actions/workflows/node.js.yml/badge.svg)](https://github.com/Priyanshujindal/code-commenter/actions)
 [![codecov](https://codecov.io/gh/Priyanshujindal/code-commenter/graph/badge.svg)](https://codecov.io/gh/Priyanshujindal/code-commenter)
 
-A CLI tool that scans JavaScript files and suggests simple, beginner-friendly comments for functions and code blocks. It helps improve code documentation by identifying undocumented functions and adding TODO comments where documentation is missing.
+A CLI tool that scans JavaScript and TypeScript files and suggests simple, beginner-friendly comments for functions and code blocks. It helps improve code documentation by identifying undocumented functions and adding TODO comments where documentation is missing.
 
 ## Features
 
-- Automatically adds JSDoc comments to JavaScript and TypeScript functions, including:
-  - Function declarations, arrow functions, class methods, getters, setters
-  - Destructured parameters, rest parameters, and TypeScript parameter properties
-  - Smart type inference for parameters and return values
-- Supports custom templates via `code-commenter.config.json`
-- Handles both single-line (`// ...`), multi-line (`/* ... */`), and JSDoc (`/** ... */`) comments for skipping already-documented functions
-- Robust error handling and CLI options (dry-run, output directory, etc.)
-- Fully tested: all tests pass for parameter extraction, JSDoc generation, CLI, and comment detection
+- Automatically adds JSDoc comments to JavaScript and TypeScript functions.
+- Supports function declarations, arrow functions, class methods, getters, and setters.
+- Handles complex parameter patterns, including:
+  - Deeply nested and destructured parameters.
+  - Rest parameters and TypeScript parameter properties.
+  - Functions in object literals.
+- Smart type inference for parameters and return values.
+- Customizable comment templates via `code-commenter.config.json`.
+- Skips already-documented functions.
+- Robust error handling and a user-friendly CLI.
 
 ## Quick Start
 
@@ -70,13 +72,67 @@ code-commenter <file/glob> [options]
 | `--debug`   | Show debug output                                      |
 | `--help`    | Show CLI help                                          |
 
-## Comment Detection
+## Advanced Features
 
-code-commenter will skip functions that already have a documentation comment immediately above them. It recognizes:
+code-commenter can handle a variety of advanced JavaScript and TypeScript patterns.
 
-- Single-line comments: `// ...`
-- Multi-line comments: `/* ... */`
-- JSDoc comments: `/** ... */`
+### Deeply Destructured Parameters
+
+The tool can understand and document parameters that are deeply destructured.
+
+**Example:**
+
+```javascript
+function processData({ data: { id, values: [val1, val2] }, options: { enabled } }) {
+  // ...
+}
+```
+
+**Generated JSDoc:**
+
+```javascript
+/**
+ * processData
+ * @param {Object} param1 - Object parameter
+ * @param {Object} param1.data - Property 'data'
+ * @param {any} param1.data.id - Property 'id'
+ * @param {any} param1.data.values - Property 'values'
+ * @param {Object} param1.options - Property 'options'
+ * @param {any} param1.options.enabled - Property 'enabled'
+ */
+```
+
+### Functions in Object Literals
+
+It can also document functions and arrow functions assigned to properties in an object.
+
+**Example:**
+
+```javascript
+const utils = {
+  add: function(a, b) {
+    return a + b;
+  },
+  subtract: (a, b) => {
+    return a - b;
+  },
+};
+```
+
+**Generated JSDoc:**
+
+```javascript
+/**
+ * add
+ * @param {any} a - Parameter 'a'
+ * @param {any} b - Parameter 'b'
+ */
+/**
+ * subtract
+ * @param {any} a - Parameter 'a'
+ * @param {any} b - Parameter 'b'
+ */
+```
 
 ## TypeScript Support
 
@@ -217,4 +273,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ by [Your Name]
+Made with ❤️ by Priyanshujindal
