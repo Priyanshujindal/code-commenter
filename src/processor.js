@@ -271,6 +271,26 @@ async function processFile(filePath, options = {}) {
             }
           }
         },
+        Property(node) {
+          if (
+            (node.value.type === "ArrowFunctionExpression" ||
+              node.value.type === "FunctionExpression") &&
+            !hasLeadingComment(node, code)
+          ) {
+            const comment = generateFunctionComment(
+              node.value,
+              code,
+              node.key.name || "Function",
+              { ...options, isTypeScript },
+            );
+            if (comment) {
+              commentsToInsert.push({
+                position: node.start,
+                text: formatComment(comment, code, node.loc.start.line),
+              });
+            }
+          }
+        },
       });
     }
 
@@ -358,6 +378,31 @@ function hasComment(node, code) {
       if (lines[j].trim() === "") {
         break; // If blank line inside comment block, stop
       }
+    }
+  }
+  return false;
+}
+
+/**
+ * Checks if a node has a leading JSDoc-style comment.
+ * @param {Node} node - The AST node.
+ * @param {string} code - The source code.
+ * @returns {boolean} True if a leading comment exists.
+ */
+function hasLeadingComment(node, code) {
+  const precedingSlice = code.substring(node.start - 250, node.start);
+  const commentRegex = /\/\*\*[\s\S]*?\*\//g;
+  let match;
+  let lastMatch = null;
+  while ((match = commentRegex.exec(precedingSlice)) !== null) {
+    lastMatch = match;
+  }
+
+  if (lastMatch) {
+    const commentEnd = lastMatch.index + lastMatch[0].length;
+    const between = precedingSlice.substring(commentEnd);
+    if (between.trim() === "") {
+      return true;
     }
   }
   return false;
