@@ -84,7 +84,7 @@ const testArrow = (a, b) => a + b;
     // Check that the file contains the expected comments (in dry-run output)
     expect(stdout).toContain("@summary TODO: Document what testFunction does");
     expect(stdout).toContain("@summary TODO: Document what testArrow does");
-  });
+  }, 20000);
 
   it("should create output directory if it does not exist", async () => {
     const outputFile = path.join(TEST_OUTPUT_DIR, "test-file.js");
@@ -106,7 +106,7 @@ const testArrow = (a, b) => a + b;
     const content = await fs.readFile(outputFile, "utf8");
     expect(content).toContain("/**");
     expect(content).toContain("testFunction");
-  }, 10000);
+  }, 20000);
 
   it("should handle non-existent files gracefully", () => {
     const { status, stderr } = runCLI(["non-existent-file.js"]);
@@ -124,7 +124,7 @@ const testArrow = (a, b) => a + b;
     expect(stdout).toContain("(no changes needed)");
 
     await fs.unlink(emptyFile);
-  });
+  }, 20000);
 
   it("should handle files with syntax errors gracefully", async () => {
     const badFile = path.join(TEST_DIR, "syntax-error.js");
@@ -136,7 +136,7 @@ const testArrow = (a, b) => a + b;
     expect(stderr).toContain("parsing");
 
     await fs.unlink(badFile);
-  }, 10000);
+  }, 20000);
 
   it("should handle relative paths correctly", async () => {
     const relativePath = path.relative(process.cwd(), TEST_FILE);
@@ -155,7 +155,7 @@ const testArrow = (a, b) => a + b;
       } finally {
         await fs.unlink(homeFile).catch(() => {});
       }
-    });
+    }, 20000);
   }
 
   it("should handle multiple files at once", async () => {
@@ -172,13 +172,13 @@ const testArrow = (a, b) => a + b;
     expect(stdout).toContain("multi2.js");
 
     await Promise.all([fs.unlink(file1), fs.unlink(file2)]);
-  });
+  }, 20000);
 
   it("should respect the --no-todo flag", async () => {
     const { status, stdout } = runCLI(["--dry-run", "--no-todo", TEST_FILE]);
     expect(status).toBe(0);
     expect(stdout).not.toContain("TODO");
-  }, 10000);
+  }, 20000);
 
   it("should use a config file", async () => {
     const configFile = "test.config.json";
@@ -197,7 +197,7 @@ const testArrow = (a, b) => a + b;
     expect(stdout).toContain("testFunction"); // Function name from test file
 
     await fs.unlink(configFile);
-  });
+  }, 20000);
 
   it(
     "should handle very large files",

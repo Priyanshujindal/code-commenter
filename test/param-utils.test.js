@@ -287,8 +287,8 @@ describe("Parameter Utilities", () => {
       expect(result).toContain(
         "@param {Object} param0.b - Property 'b'",
       );
-      expect(result).toContain("@param {any} c - Property 'c'");
-      expect(result).toContain("@param {Array} d - Property 'd'");
+      expect(result).toContain("@param {any} param0.b.c - Property 'c'");
+      expect(result).toContain("@param {Array} param0.b.d - Property 'd'");
 
       // Check for array parameters
       expect(result).toContain("@param {Array} param1 - Array parameter");
