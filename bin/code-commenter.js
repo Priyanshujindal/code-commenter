@@ -31,8 +31,8 @@ program
     try {
       if (files.length === 0) {
         console.error("Error: No files specified.");
-        process.exit(1);
-      }
+      process.exit(1);
+    }
 
       let config = {};
       if (options.config) {
@@ -45,7 +45,7 @@ program
 
       const mergedOptions = { ...config, ...options };
 
-      const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
+    const normalizedFiles = files.map((f) => path.resolve(process.cwd(), f));
       const { exitCode } = await processFiles(normalizedFiles, mergedOptions);
       process.exit(exitCode);
     } catch (error) {

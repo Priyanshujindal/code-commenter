@@ -262,8 +262,6 @@ function getReturnType(functionNode, isTypeScript) {
     if (isTypeScript && functionNode.returnType) {
         return getTSType(functionNode.returnType);
     }
-
-    // Basic inference for JS
     if (functionNode.body) {
         let hasReturn = false;
         const walk = require('acorn-walk');
@@ -276,8 +274,6 @@ function getReturnType(functionNode, isTypeScript) {
         });
         if(hasReturn) return 'any';
     }
-
-    // Arrow function with implicit return
     if (functionNode.type === 'ArrowFunctionExpression' && functionNode.body.type !== 'BlockStatement') {
         return 'any';
     }
@@ -289,5 +285,6 @@ module.exports = {
     generateParamDocs,
     processFunctionNode,
     extractParams,
-    getReturnType
+    getReturnType,
+    findFunctionNode,
 };

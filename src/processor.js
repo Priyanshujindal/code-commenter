@@ -431,9 +431,14 @@ function generateFunctionComment(node, code, functionName = "", options = {}) {
     const paramDocs = processFunctionNode(node, options);
 
     let comment = "/**\n";
-    comment += ` * @summary TODO: Document what ${functionName || "Function"} does\n`;
+    if (!options.noTodo) {
+      comment += ` * @summary TODO: Document what ${functionName || "Function"} does\n`;
+    }
     if (paramDocs) {
-      comment += ` * \n * ${paramDocs}\n`;
+      if (!options.noTodo) {
+        comment += ` * \n`;
+      }
+      comment += ` * ${paramDocs}\n`;
     }
     comment += " */";
 

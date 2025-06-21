@@ -63,7 +63,7 @@ class Calculator {
 
       expect(fs.writeFile).toHaveBeenCalledWith(
         testFile,
-        expect.stringContaining("* add"),
+        expect.stringContaining("@summary TODO: Document what add does"),
         "utf8",
       );
     });
