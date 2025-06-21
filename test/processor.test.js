@@ -75,7 +75,7 @@ class Calculator {
       });
       // Assert on the actual output written by fs.writeFile
       const written = fs.writeFile.mock.calls[0][1];
-      expect(written).toContain("@summary Function add with parameters 'a', 'b'");
+      expect(written).toContain("@summary Adds (a, b)");
     });
 
     it("should handle dry run mode", async () => {

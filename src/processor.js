@@ -248,8 +248,8 @@ async function processFile(filePath, options = {}) {
       // Walk the AST to find functions without comments
       // debug("Walking AST to find functions...");
       try {
-        walk.simple(ast, {
-          FunctionDeclaration(node) {
+      walk.simple(ast, {
+        FunctionDeclaration(node) {
             const has = hasComment(node, code);
             if (!has) {
               // Always pass node.id.name for named functions
@@ -258,7 +258,7 @@ async function processFile(filePath, options = {}) {
                 isTypeScript,
                 smartSummary: true,
               });
-              if (comment) {
+            if (comment) {
                 const pos = (node.range && node.range[0]) ? node.range[0] : 0;
                 if (!commentPositions.has(pos)) {
                   commentsToInsert.push({ position: pos, text: comment });
@@ -282,10 +282,10 @@ async function processFile(filePath, options = {}) {
                   commentsToInsert.push({ position: pos, text: comment });
                   commentPositions.add(pos);
                 }
-              }
             }
-          },
-          ArrowFunctionExpression(node) {
+          }
+        },
+        ArrowFunctionExpression(node) {
             const has = hasComment(node, code);
             if (!has) {
               // Arrow functions are usually anonymous
@@ -302,8 +302,8 @@ async function processFile(filePath, options = {}) {
                 }
               }
             }
-          },
-          MethodDefinition(node) {
+        },
+        MethodDefinition(node) {
             const has = hasComment(node, code);
             if (!has && node.value) {
               const comment = generateFunctionComment(node.value, code, node.key && node.key.name ? node.key.name : undefined, {
@@ -317,10 +317,10 @@ async function processFile(filePath, options = {}) {
                   commentsToInsert.push({ position: pos, text: comment });
                   commentPositions.add(pos);
                 }
-              }
             }
-          },
-        });
+          }
+        },
+      });
       } catch (err) {
         console.error('AST traversal error:', err);
       }

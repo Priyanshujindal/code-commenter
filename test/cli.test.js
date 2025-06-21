@@ -77,7 +77,7 @@ const testArrow = (a, b) => a + b;
 
     // Check that the file contains the expected comments (in dry-run output)
     expect(stdout).toContain("@summary Function testFunction with parameters 'param1', 'param2'");
-    expect(stdout).toContain("@summary Function with parameters 'a', 'b'");
+    expect(stdout).toContain("@summary TODO: Describe what this function does (auto-generated)");
   }, 20000);
 
   it("should create output directory if it does not exist", async () => {

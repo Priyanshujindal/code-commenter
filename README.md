@@ -113,7 +113,7 @@ function processData({ data: { id, values: [val1, val2] }, options: { enabled } 
 ```javascript
 /**
  * @summary Function processData with parameters 'param0'
- *
+ * 
  * @param {Object} param0 - Object parameter
  * @param {Object} param0.data - Property 'data'
  * @param {any} param0.data.id - Property 'id'
@@ -147,7 +147,7 @@ const utils = {
 ```javascript
 /**
  * @summary Function add with parameters 'a', 'b'
- *
+ * 
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
@@ -155,7 +155,7 @@ const utils = {
  */
 /**
  * @summary Function subtract with parameters 'a', 'b'
- *
+ * 
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
@@ -189,7 +189,7 @@ The generated JSDoc will look like:
 ```js
 /**
  * @summary Function Example with parameters 'foo', 'param1', 'args'
- *
+ * 
  * @param {string} foo - Parameter 'foo'
  * @param {BarType} param1 - Object parameter
  * @param {...number} args - Rest parameter

@@ -317,41 +317,27 @@ function generateParamDocs(functionNode, options = {}, functionNameArg) {
             }
             paramDocs.push(`@returns {${returnType}} - The return value`);
         }
-        // Smart summary logic
-        const isValidIdentifier = name => !!name && name !== 'undefined' && /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(name);
-        const paramNames = params.map(p => p.name);
-        let functionName = functionNameArg;
-        if (!functionName) {
-            functionName = functionNode.id ? functionNode.id.name : 'anonymous';
-        }
-        const hasValidNames = paramNames.length > 0 && paramNames.every(p => isValidIdentifier(p.trim()));
-        let summaryLine = '';
-        if (hasValidNames) {
-            if (functionName && functionName !== 'anonymous') {
-                if (paramNames.length === 1) {
-                    summaryLine = `Function ${functionName} with parameter '${paramNames[0]}'`;
-                } else {
-                    summaryLine = `Function ${functionName} with parameters '${paramNames.join("', '")}'`;
-                }
+        // Use smart summary if possible
+        let summaryLine = generateSmartSummary(functionNode, functionNameArg, params);
+        // If no smart summary and noTodo is set, skip the summary line
+        let addSummary = true;
+        if (!summaryLine) {
+            if (options.noTodo) {
+                addSummary = false;
             } else {
-                if (paramNames.length === 1) {
-                    summaryLine = `Function with parameter '${paramNames[0]}'`;
-                } else {
-                    summaryLine = `Function with parameters '${paramNames.join("', '")}'`;
-                }
+                summaryLine = 'TODO: Describe what this function does (auto-generated)';
             }
-        } else {
-            // Only use the placeholder for truly unparseable/anonymous functions
-            summaryLine = 'TODO: Describe what this function does (auto-generated)';
         }
         // Build JSDoc block
         let doc = "/**\n";
-        doc += ` * @summary ${summaryLine}\n`;
+        if (addSummary) {
+            doc += ` * @summary ${summaryLine}\n`;
+        }
         // Add @example if requested
         if (options.example) {
-            const exampleCall = functionName && functionName !== 'anonymous'
-                ? functionName + '(' + paramNames.map(n => n || 'value').join(', ') + ')'
-                : 'function(' + paramNames.map(n => n || 'value').join(', ') + ')';
+            const exampleCall = functionNameArg && functionNameArg !== 'anonymous'
+                ? functionNameArg + '(' + params.map(p => p.name || 'value').join(', ') + ')'
+                : 'function(' + params.map(p => p.name || 'value').join(', ') + ')';
             doc += ` * @example\n * ${exampleCall}\n`;
         }
         if (paramDocs.length > 0) {
@@ -400,6 +386,73 @@ function generateFunctionComment(node, code, functionName = "", options = {}) {
         return "/** TODO: Parsing failed for this function. Please check manually. */";
     }
     return doc;
+}
+
+// Helper to generate a business-logic-aware summary from function name and params
+function generateSmartSummary(functionNode, functionNameArg, params) {
+    // Use functionNameArg if available, else try to get from functionNode
+    let functionName = functionNameArg;
+    if (!functionName) {
+        functionName = functionNode.id ? functionNode.id.name : '';
+    }
+    // Only use smart summary for valid, non-anonymous function names
+    if (!functionName || functionName === 'anonymous' || functionName === '✖' || !/^[$A-Z_][0-9A-Z_$]*$/i.test(functionName)) return null;
+    // Heuristic: use common verbs for known function names
+    const verbs = {
+        add: 'Adds',
+        subtract: 'Subtracts',
+        multiply: 'Multiplies',
+        divide: 'Divides',
+        get: 'Gets',
+        set: 'Sets',
+        update: 'Updates',
+        remove: 'Removes',
+        delete: 'Deletes',
+        create: 'Creates',
+        fetch: 'Fetches',
+        find: 'Finds',
+        is: 'Checks if',
+        has: 'Checks if',
+        can: 'Checks if',
+        to: 'Converts',
+        parse: 'Parses',
+        format: 'Formats',
+        validate: 'Validates',
+        render: 'Renders',
+        handle: 'Handles',
+        process: 'Processes',
+        calculate: 'Calculates',
+        encode: 'Encodes',
+        decode: 'Decodes',
+        map: 'Maps',
+        filter: 'Filters',
+        reduce: 'Reduces',
+        sort: 'Sorts',
+        merge: 'Merges',
+        split: 'Splits',
+        join: 'Joins',
+        replace: 'Replaces',
+        trim: 'Trims',
+        capitalize: 'Capitalizes',
+        lowercase: 'Converts to lowercase',
+        uppercase: 'Converts to uppercase',
+    };
+    // Try to match the function name to a known verb
+    const lowerName = functionName.toLowerCase();
+    for (const verb in verbs) {
+        if (lowerName.startsWith(verb)) {
+            // Use the rest of the name as the object
+            const object = functionName.slice(verb.length).replace(/^[A-Z]/, c => c.toLowerCase());
+            const paramList = params && params.length > 0 ? ` (${params.map(p => p.name).join(', ')})` : '';
+            return `${verbs[verb]}${object ? ' ' + object : ''}${paramList}`.trim();
+        }
+    }
+    // Fallback: describe as "Function <name> with parameters ..."
+    if (params && params.length > 0) {
+        return `Function ${functionName} with parameters ${params.map(p => `'${p.name}'`).join(', ')}`;
+    } else {
+        return `Function ${functionName}`;
+    }
 }
 
 module.exports = {
