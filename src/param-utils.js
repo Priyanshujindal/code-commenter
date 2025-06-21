@@ -22,6 +22,8 @@ function getTSType(tsNode, defaultType = "any") {
         case 'TSStringKeyword': return 'string';
         case 'TSNumberKeyword': return 'number';
         case 'TSBooleanKeyword': return 'boolean';
+        case 'TSAnyKeyword': return 'any';
+        case 'TSVoidKeyword': return 'void';
         case 'TSArrayType': {
             const elementType = getTSType(tsNode.elementType, 'any');
             return `Array<${elementType}>`;
@@ -178,13 +180,11 @@ function findFunctionNode(ast) {
     return null;
 }
 
-function generateParamDocs(code) {
+function generateParamDocs(functionNode, options = {}) {
     try {
-        const ast = parse(code, {ecmaVersion: "latest", sourceType: "module", plugins: ['typescript']});
-        const functionNode = findFunctionNode(ast);
         if (!functionNode) return "";
 
-        const isTypeScript = code.includes("class") || /:/.test(code);
+        const { isTypeScript = false } = options;
         const params = extractParams(functionNode, isTypeScript);
         const paramDocs = [];
 
@@ -193,7 +193,7 @@ function generateParamDocs(code) {
                 const docName = parentName ? `${parentName}.${prop.name}`: prop.name;
                 let propDoc = `@param {${prop.type}} ${docName}`;
                 if (prop.hasDefault && !prop.properties) {
-                    propDoc += `=${prop.defaultValue}`;
+                    propDoc += ` - Default value: \`${prop.defaultValue}\`.`;
                 }
                 propDoc += ` - Property '${prop.name}'`;
                 paramDocs.push(propDoc);
@@ -211,44 +211,83 @@ function generateParamDocs(code) {
                 paramDocs.push(`@param {${param.type}} ${param.name} - Object parameter`);
                 addPropDocs(param.properties, param.name);
             } else if (param.hasDefault) {
-                paramDocs.push(`@param {${param.type}} ${param.name}=${param.defaultValue} - Parameter '${param.name}'`);
+                paramDocs.push(`@param {${param.type}} [${param.name}=${param.defaultValue}] - Parameter '${param.name}'`);
             } else {
                 paramDocs.push(`@param {${param.type}} ${param.name} - Parameter '${param.name}'`);
             }
         }
 
-        if (code.includes("return")) {
-            paramDocs.push(`@returns {any} - The return value`);
+        const returnType = getReturnType(functionNode, isTypeScript);
+        if (returnType) {
+            if (paramDocs.length > 0) {
+                paramDocs.push(""); // Add a blank line for separation
+            }
+            paramDocs.push(`@returns {${returnType}} - The return value`);
+        }
+        
+        const functionName = functionNode.id ? functionNode.id.name : 'anonymous';
+        if (params.length > 0 && options.example) {
+            const exampleParams = params.map(p => {
+                switch (p.type) {
+                    case 'string':
+                        return `'example'`;
+                    case 'number':
+                        return `1`;
+                    case 'boolean':
+                        return `true`;
+                    case 'Object':
+                        return `{}`;
+                    case 'Array':
+                        return `[]`;
+                    default:
+                        return `null`;
+                }
+            }).join(', ');
+
+            paramDocs.push(`@example ${functionName}(${exampleParams})`);
         }
 
-        const functionName = functionNode.id ? functionNode.id.name : 'anonymous';
-        const exampleParams = params.map(p => {
-            switch (p.type) {
-                case 'string':
-                    return `'example'`;
-                case 'number':
-                    return `1`;
-                case 'boolean':
-                    return `true`;
-                case 'Object':
-                    return `{}`;
-                case 'Array':
-                    return `[]`;
-                default:
-                    return `null`;
-            }
-        }).join(', ');
-
-        paramDocs.push(`@example ${functionName}(${exampleParams})`);
-
-        return paramDocs.join("\n");
+        return paramDocs.join("\n * ");
     } catch (error) {
-        // console.error("Error parsing code:", error);
+        console.error("Error generating parameter docs:", error);
         return "";
     }
 }
 
+function processFunctionNode(node, options = {}) {
+    return generateParamDocs(node, options);
+}
+
+function getReturnType(functionNode, isTypeScript) {
+    if (isTypeScript && functionNode.returnType) {
+        return getTSType(functionNode.returnType);
+    }
+
+    // Basic inference for JS
+    if (functionNode.body) {
+        let hasReturn = false;
+        const walk = require('acorn-walk');
+        walk.simple(functionNode.body, {
+            ReturnStatement(node) {
+                if (node.argument) {
+                    hasReturn = true;
+                }
+            }
+        });
+        if(hasReturn) return 'any';
+    }
+
+    // Arrow function with implicit return
+    if (functionNode.type === 'ArrowFunctionExpression' && functionNode.body.type !== 'BlockStatement') {
+        return 'any';
+    }
+
+    return null;
+}
+
 module.exports = {
-    extractParams,
     generateParamDocs,
+    processFunctionNode,
+    extractParams,
+    getReturnType
 };

@@ -2,7 +2,7 @@ const fs = require("fs/promises");
 const path = require("path");
 const { parse } = require("acorn");
 const walk = require("acorn-walk");
-const { generateParamDocs } = require("./param-utils");
+const { generateParamDocs, processFunctionNode } = require("./param-utils");
 const { fileExists, ensureDirectoryExists } = require("./file-utils");
 const util = require("util");
 const glob = require("glob").glob;
@@ -428,56 +428,16 @@ function hasLeadingComment(node, code) {
  */
 function generateFunctionComment(node, code, functionName = "", options = {}) {
   try {
-    // For TypeScript, pass the AST node directly to processFunctionNode
-    let paramDocs;
-    if (options.isTypeScript && typeof node === "object" && node.params) {
-      paramDocs = require("./param-utils").processFunctionNode(node, options);
-      if (Array.isArray(paramDocs)) paramDocs = paramDocs.join("\n");
-    } else {
-      // Try to generate parameter documentation from code slice
-      const functionCode = code.slice(node.start, node.end);
-      paramDocs = require("./param-utils").generateParamDocs(
-        functionCode,
-        options,
-      );
-    }
+    const paramDocs = processFunctionNode(node, options);
 
-    let todoLine = "";
-    if (options.todo !== false) {
-      if (options.todoTemplate) {
-        todoLine =
-          options.todoTemplate.replace("{name}", functionName || "Function") +
-          "\n";
-      } else {
-        todoLine = `// TODO: Document what ${functionName || "Function"} does\n`;
-      }
-    }
+    let comment = "/**\n";
+    comment += ` * @summary TODO: Document what ${functionName || "Function"} does\n`;
     if (paramDocs) {
-      if (options.jsdocTemplate) {
-        // Replace placeholders in jsdocTemplate
-        const jsdoc = options.jsdocTemplate
-          .replace("{name}", functionName || "Function")
-          .replace(
-            "{params}",
-            paramDocs
-              .split("\n")
-              .filter((l) => l.includes("@param"))
-              .join("\n"),
-          )
-          .replace(
-            "{returns}",
-            paramDocs.split("\n").find((l) => l.includes("@returns")) || "",
-          );
-        return todoLine + jsdoc;
-      } else {
-        return (
-          todoLine +
-          `/**\n * ${functionName || "Function"}\n * ${paramDocs.split("\n").join("\n * ")}\n */`
-        );
-      }
-    } else if (todoLine) {
-      return todoLine;
+      comment += ` * \n * ${paramDocs}\n`;
     }
+    comment += " */";
+
+    return comment;
   } catch (error) {
     console.error(
       `Error generating comment for function: ${functionName}`,
@@ -572,14 +532,16 @@ async function processFiles(patterns, options = {}) {
  */
 function getIndentation(code, lineNumber) {
   const lines = code.split("\n");
-  if (lineNumber < 1 || lineNumber > lines.length) return "";
+  if (lineNumber <= 0 || lineNumber > lines.length) {
+    return "";
+  }
   const line = lines[lineNumber - 1];
-  const match = line.match(/^\s*/);
-  return match ? match[0] : "";
+  return line.match(/^\s*/)[0];
 }
 
 // Format a comment block with correct indentation and spacing
 function formatComment(comment, code, lineNumber) {
+  if (!comment) return "";
   const indent = getIndentation(code, lineNumber);
   // Ensure comment ends with a newline
   let formatted = comment.trimEnd() + "\n";
@@ -614,4 +576,5 @@ module.exports = {
   hasComment,
   generateFunctionComment,
   getIndentation,
+  hasLeadingComment,
 };

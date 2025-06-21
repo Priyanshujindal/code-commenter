@@ -9,23 +9,26 @@ A CLI tool that scans JavaScript and TypeScript files and suggests simple, begin
 
 ## Features
 
-- Automatically adds JSDoc comments to JavaScript and TypeScript functions.
-- Supports function declarations, arrow functions, class methods, getters, and setters.
-- Automatically adds `@returns` tag if a return statement is present.
-- Handles complex parameter patterns, including:
-  - Deeply nested and destructured parameters.
-  - Rest parameters and TypeScript parameter properties.
-  - Functions in object literals.
-- Smart type inference for parameters and return values (infers from default values).
-- Generates `@example` tags with placeholder values.
-- Customizable comment templates via `code-commenter.config.json`.
-- Skips already-documented functions.
-- Robust error handling and a user-friendly CLI.
-- Standard `--version` flag to display the current version.
+- **JSDoc Generation**: Automatically adds clean, well-formatted JSDoc comments to JavaScript and TypeScript functions.
+- **Broad Syntax Support**: Supports function declarations, arrow functions, class methods, getters, and setters.
+- **Smart Tag Generation**:
+  - Automatically adds an `@returns` tag if a `return` statement is detected.
+  - Generates `@example` tags with placeholder values.
+- **Complex Parameter Handling**:
+  - Understands deeply nested and destructured parameters.
+  - Correctly documents rest parameters and TypeScript parameter properties.
+  - Handles functions inside object literals.
+- **Improved Type Inference**: Infers parameter and return types from default values and TypeScript type annotations.
+- **Customizable**:
+  - Comment templates can be customized via `code-commenter.config.json`.
+  - Skips already-documented functions.
+- **Developer-Friendly**:
+  - Robust error handling with user-friendly output.
+  - Standard `--version` and `--help` flags.
 
 ## Quick Start
 
-1. **Install (locally or globally):**
+1. **Install (globally or locally):**
 
 ```sh
 npm install -g code-commenter
@@ -105,13 +108,14 @@ function processData({ data: { id, values: [val1, val2] }, options: { enabled } 
 
 ```javascript
 /**
- * processData
- * @param {Object} param1 - Object parameter
- * @param {Object} param1.data - Property 'data'
- * @param {any} param1.data.id - Property 'id'
- * @param {any} param1.data.values - Property 'values'
- * @param {Object} param1.options - Property 'options'
- * @param {any} param1.options.enabled - Property 'enabled'
+ * @summary TODO: Document what processData does
+ * 
+ * @param {Object} param0 - Object parameter
+ * @param {Object} param0.data - Property 'data'
+ * @param {any} param0.data.id - Property 'id'
+ * @param {any} param0.data.values - Property 'values'
+ * @param {Object} param0.options - Property 'options'
+ * @param {any} param0.options.enabled - Property 'enabled'
  * @returns {any} - The return value
  * @example processData({ data: { id: null, values: [] }, options: { enabled: null } })
  */
@@ -138,14 +142,16 @@ const utils = {
 
 ```javascript
 /**
- * add
+ * @summary TODO: Document what add does
+ * 
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
  * @example add(null, null)
  */
 /**
- * subtract
+ * @summary TODO: Document what subtract does
+ * 
  * @param {any} a - Parameter 'a'
  * @param {any} b - Parameter 'b'
  * @returns {any} - The return value
@@ -178,10 +184,11 @@ The generated JSDoc will look like:
 
 ```js
 /**
- * TODO: Add description
- * @param {string} foo (parameter property)
- * @param {BarType} param1 - Destructured parameter
- * @param {...number[]} args
+ * @summary TODO: Document what constructor does
+ * 
+ * @param {string} foo - Parameter 'foo'
+ * @param {BarType} param1 - Object parameter
+ * @param {...number} args - Rest parameter
  * @returns {any} - The return value
  * @example Example(null, null, null)
  */
@@ -311,4 +318,4 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
-Made with ❤️ by Priyanshujindal
+Made with ❤️ by Priyanshu jindal
